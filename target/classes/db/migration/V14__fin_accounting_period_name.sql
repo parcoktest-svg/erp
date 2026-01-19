@@ -1,0 +1,2 @@
+ALTER TABLE fin_accounting_period
+ADD COLUMN name VARCHAR(100) NOT NULL DEFAULT '';

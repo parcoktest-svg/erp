@@ -1,32 +1,47 @@
 import { Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
-import { financeApi } from '@/utils/api'
+import { coreApi, financeApi } from '@/utils/api'
 import { useContextStore } from '@/stores/context'
-import CompanyOrgBar from '@/views/modules/common/CompanyOrgBar'
+import { getApiErrorMessage } from '@/utils/error'
+
+type CompanyRow = { id: number; code?: string; name?: string }
 
 type GlAccountRow = { id: number; code?: string; name?: string; type?: string; active?: boolean }
 
 export default function GlAccountsView() {
   const companyId = useContextStore((s) => s.companyId)
+  const setCompanyId = useContextStore((s) => s.setCompanyId)
+
+  const [companyLoading, setCompanyLoading] = useState(false)
+  const [companies, setCompanies] = useState<CompanyRow[]>([])
 
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<GlAccountRow[]>([])
 
   const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [form] = Form.useForm()
 
-  async function load() {
-    if (!companyId) {
-      setRows([])
-      return
+  const loadCompanies = async () => {
+    setCompanyLoading(true)
+    try {
+      const res = await coreApi.listCompanies()
+      setCompanies(res || [])
+      if (!companyId && Array.isArray(res) && res.length > 0) setCompanyId(res[0]?.id)
+    } catch (e: any) {
+      message.error(getApiErrorMessage(e, 'Failed to load companies'))
+    } finally {
+      setCompanyLoading(false)
     }
+  }
+
+  const load = async (cid: number) => {
     setLoading(true)
     try {
-      setRows((await financeApi.listGlAccounts(companyId)) || [])
+      const res = await financeApi.listGlAccounts(cid)
+      setRows(res || [])
     } catch (e: any) {
-      message.error(e?.response?.data?.message || e?.message || 'Failed to load GL accounts')
+      message.error(getApiErrorMessage(e, 'Failed to load GL accounts'))
       setRows([])
     } finally {
       setLoading(false)
@@ -34,35 +49,44 @@ export default function GlAccountsView() {
   }
 
   useEffect(() => {
-    void load()
+    void loadCompanies()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!companyId) return
+    void load(companyId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId])
 
+  const companyOptions = useMemo(
+    () => companies.map((c) => ({ value: c.id, label: `${c.code || c.id} - ${c.name || ''}` })),
+    [companies]
+  )
+
   const columns: ColumnsType<GlAccountRow> = [
-    { title: 'Code', dataIndex: 'code', width: 140 },
+    { title: 'Code', dataIndex: 'code', width: 160 },
     { title: 'Name', dataIndex: 'name' },
     { title: 'Type', dataIndex: 'type', width: 140 },
     {
       title: 'Active',
       dataIndex: 'active',
-      width: 120,
-      render: (v: any) => (v ? <Tag color="green">Yes</Tag> : <Tag color="red">No</Tag>)
+      width: 110,
+      render: (v: any) => (v ? <Tag color="green">YES</Tag> : <Tag color="red">NO</Tag>)
     }
   ]
-
-  const emptyHint = useMemo(() => !loading && (rows || []).length === 0, [loading, rows])
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Card>
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <div>
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              GL Accounts
-            </Typography.Title>
-            <Typography.Text type="secondary">Chart of Accounts untuk posting jurnal dan laporan keuangan.</Typography.Text>
-          </div>
+          <Typography.Title level={4} style={{ margin: 0 }}>
+            GL Accounts
+          </Typography.Title>
           <Space>
+            <Button onClick={() => companyId && load(companyId)} disabled={!companyId} loading={loading}>
+              Refresh
+            </Button>
             <Popconfirm
               title="Seed default GL accounts?"
               okText="Seed"
@@ -71,9 +95,9 @@ export default function GlAccountsView() {
                 try {
                   await financeApi.seedDefaultGlAccounts(companyId)
                   message.success('Seeded')
-                  await load()
+                  await load(companyId)
                 } catch (e: any) {
-                  message.error(e?.response?.data?.message || e?.message || 'Failed to seed defaults')
+                  message.error(getApiErrorMessage(e, 'Failed to seed default GL accounts'))
                 }
               }}
             >
@@ -88,21 +112,25 @@ export default function GlAccountsView() {
                 setOpen(true)
               }}
             >
-              Create GL Account
+              New GL Account
             </Button>
           </Space>
         </Space>
       </Card>
 
       <Card>
-        <Space direction="vertical" style={{ width: '100%' }} size={12}>
-          <CompanyOrgBar showOrg={false} />
-          <Space>
-            <Button onClick={() => void load()} disabled={!companyId} loading={loading}>
-              Refresh
-            </Button>
-            {emptyHint ? <Typography.Text type="secondary">Belum ada data. Klik "Seed Defaults" untuk membuat COA default.</Typography.Text> : null}
-          </Space>
+        <Space wrap>
+          <div style={{ minWidth: 320 }}>
+            <Typography.Text strong>Company</Typography.Text>
+            <Select
+              style={{ width: '100%' }}
+              loading={companyLoading}
+              value={companyId ?? undefined}
+              placeholder="Select company"
+              options={companyOptions}
+              onChange={(v) => setCompanyId(v)}
+            />
+          </div>
         </Space>
       </Card>
 
@@ -115,26 +143,23 @@ export default function GlAccountsView() {
         title="Create GL Account"
         onCancel={() => setOpen(false)}
         okText="Create"
-        confirmLoading={saving}
         onOk={async () => {
           if (!companyId) return
           try {
             const values = await form.validateFields()
-            setSaving(true)
-            await financeApi.createGlAccount(companyId, {
+            const payload: any = {
               code: values.code,
               name: values.name,
               type: values.type,
               active: Boolean(values.active)
-            })
+            }
+            await financeApi.createGlAccount(companyId, payload)
             message.success('Created')
             setOpen(false)
-            await load()
+            await load(companyId)
           } catch (e: any) {
             if (e?.errorFields) return
-            message.error(e?.response?.data?.message || e?.message || 'Failed to create GL account')
-          } finally {
-            setSaving(false)
+            message.error(getApiErrorMessage(e, 'Failed to create GL account'))
           }
         }}
       >

@@ -2,9 +2,11 @@ import { Button, Card, DatePicker, Form, Select, Space, Table, Tabs, Typography,
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
-import { financeApi } from '@/utils/api'
+import { coreApi, financeApi } from '@/utils/api'
 import { useContextStore } from '@/stores/context'
-import CompanyOrgBar from '@/views/modules/common/CompanyOrgBar'
+import { getApiErrorMessage } from '@/utils/error'
+
+type CompanyRow = { id: number; code?: string; name?: string }
 
 type AgingRow = {
   businessPartnerId?: number
@@ -29,8 +31,12 @@ function toLocalDateString(d: any): string {
   return dayjs(d).format('YYYY-MM-DD')
 }
 
-export default function ReportsView() {
+export default function FinanceReportsView() {
   const companyId = useContextStore((s) => s.companyId)
+  const setCompanyId = useContextStore((s) => s.setCompanyId)
+
+  const [companyLoading, setCompanyLoading] = useState(false)
+  const [companies, setCompanies] = useState<CompanyRow[]>([])
 
   const [agingLoading, setAgingLoading] = useState(false)
   const [agingRows, setAgingRows] = useState<AgingRow[]>([])
@@ -57,18 +63,28 @@ export default function ReportsView() {
   const [bsTotals, setBsTotals] = useState<any>(null)
   const [bsForm] = Form.useForm()
 
+  const loadCompanies = async () => {
+    setCompanyLoading(true)
+    try {
+      const res = await coreApi.listCompanies()
+      setCompanies(res || [])
+      if (!companyId && Array.isArray(res) && res.length > 0) setCompanyId(res[0]?.id)
+    } catch (e: any) {
+      message.error(getApiErrorMessage(e, 'Failed to load companies'))
+    } finally {
+      setCompanyLoading(false)
+    }
+  }
+
   useEffect(() => {
-    setAgingRows([])
-    setAgingTotals(null)
-    setGlSummaryRows([])
-    setGlSummaryTotals(null)
-    setTrialRows([])
-    setTrialTotals(null)
-    setPlRows([])
-    setPlTotals(null)
-    setBsRows([])
-    setBsTotals(null)
-  }, [companyId])
+    void loadCompanies()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const companyOptions = useMemo(
+    () => companies.map((c) => ({ value: c.id, label: `${c.code || c.id} - ${c.name || ''}` })),
+    [companies]
+  )
 
   const agingColumns: ColumnsType<AgingRow> = [
     { title: 'Partner', dataIndex: 'businessPartnerName' },
@@ -109,37 +125,6 @@ export default function ReportsView() {
     { title: 'Amount', dataIndex: 'amount', width: 160 }
   ]
 
-  const totalsText = useMemo(() => {
-    const fmt = (v: any) => (v == null ? '-' : String(v))
-    return {
-      aging: {
-        t0: fmt(agingTotals?.total0To30),
-        t1: fmt(agingTotals?.total31To60),
-        t2: fmt(agingTotals?.total61To90),
-        t3: fmt(agingTotals?.totalOver90),
-        t4: fmt(agingTotals?.totalOpen)
-      },
-      gl: {
-        debit: fmt(glSummaryTotals?.totalDebit),
-        credit: fmt(glSummaryTotals?.totalCredit)
-      },
-      trial: {
-        debit: fmt(trialTotals?.totalDebit),
-        credit: fmt(trialTotals?.totalCredit)
-      },
-      pl: {
-        revenue: fmt(plTotals?.totalRevenue),
-        expense: fmt(plTotals?.totalExpense),
-        net: fmt(plTotals?.netIncome)
-      },
-      bs: {
-        assets: fmt(bsTotals?.totalAssets),
-        liabilities: fmt(bsTotals?.totalLiabilities),
-        equity: fmt(bsTotals?.totalEquity)
-      }
-    }
-  }, [agingTotals, bsTotals, glSummaryTotals, plTotals, trialTotals])
-
   const runAging = async () => {
     if (!companyId) return
     try {
@@ -153,7 +138,7 @@ export default function ReportsView() {
       setAgingTotals(res)
     } catch (e: any) {
       if (e?.errorFields) return
-      message.error(e?.response?.data?.message || e?.message || 'Failed to load aging report')
+      message.error(getApiErrorMessage(e, 'Failed to load aging report'))
       setAgingRows([])
       setAgingTotals(null)
     } finally {
@@ -174,7 +159,7 @@ export default function ReportsView() {
       setGlSummaryTotals(res)
     } catch (e: any) {
       if (e?.errorFields) return
-      message.error(e?.response?.data?.message || e?.message || 'Failed to load GL summary report')
+      message.error(getApiErrorMessage(e, 'Failed to load GL summary report'))
       setGlSummaryRows([])
       setGlSummaryTotals(null)
     } finally {
@@ -195,7 +180,7 @@ export default function ReportsView() {
       setTrialTotals(res)
     } catch (e: any) {
       if (e?.errorFields) return
-      message.error(e?.response?.data?.message || e?.message || 'Failed to load trial balance report')
+      message.error(getApiErrorMessage(e, 'Failed to load trial balance report'))
       setTrialRows([])
       setTrialTotals(null)
     } finally {
@@ -216,7 +201,7 @@ export default function ReportsView() {
       setPlTotals(res)
     } catch (e: any) {
       if (e?.errorFields) return
-      message.error(e?.response?.data?.message || e?.message || 'Failed to load profit/loss report')
+      message.error(getApiErrorMessage(e, 'Failed to load profit/loss report'))
       setPlRows([])
       setPlTotals(null)
     } finally {
@@ -236,7 +221,7 @@ export default function ReportsView() {
       setBsTotals(res)
     } catch (e: any) {
       if (e?.errorFields) return
-      message.error(e?.response?.data?.message || e?.message || 'Failed to load balance sheet report')
+      message.error(getApiErrorMessage(e, 'Failed to load balance sheet report'))
       setBsRows([])
       setBsTotals(null)
     } finally {
@@ -253,7 +238,19 @@ export default function ReportsView() {
       </Card>
 
       <Card>
-        <CompanyOrgBar showOrg={false} />
+        <Space wrap>
+          <div style={{ minWidth: 320 }}>
+            <Typography.Text strong>Company</Typography.Text>
+            <Select
+              style={{ width: '100%' }}
+              loading={companyLoading}
+              value={companyId ?? undefined}
+              placeholder="Select company"
+              options={companyOptions}
+              onChange={(v) => setCompanyId(v)}
+            />
+          </div>
+        </Space>
       </Card>
 
       <Card>
@@ -264,7 +261,11 @@ export default function ReportsView() {
               label: 'Aging',
               children: (
                 <Space direction="vertical" style={{ width: '100%' }}>
-                  <Form form={agingForm} layout="vertical" initialValues={{ invoiceType: 'AR', asOfDate: dayjs() }}>
+                  <Form
+                    form={agingForm}
+                    layout="vertical"
+                    initialValues={{ invoiceType: 'AR', asOfDate: dayjs() }}
+                  >
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
                       <Form.Item name="invoiceType" label="Invoice Type" rules={[{ required: true }]}>
                         <Select options={[{ value: 'AR', label: 'AR' }, { value: 'AP', label: 'AP' }]} />
@@ -280,11 +281,11 @@ export default function ReportsView() {
 
                   <Card size="small">
                     <Space wrap>
-                      <div>Total 0-30: {totalsText.aging.t0}</div>
-                      <div>Total 31-60: {totalsText.aging.t1}</div>
-                      <div>Total 61-90: {totalsText.aging.t2}</div>
-                      <div>Total >90: {totalsText.aging.t3}</div>
-                      <div>Total Open: {totalsText.aging.t4}</div>
+                      <div>Total 0-30: {agingTotals?.total0To30 ?? '-'}</div>
+                      <div>Total 31-60: {agingTotals?.total31To60 ?? '-'}</div>
+                      <div>Total 61-90: {agingTotals?.total61To90 ?? '-'}</div>
+                      <div>Total &gt;90: {agingTotals?.totalOver90 ?? '-'}</div>
+                      <div>Total Open: {agingTotals?.totalOpen ?? '-'}</div>
                     </Space>
                   </Card>
 
@@ -323,8 +324,8 @@ export default function ReportsView() {
 
                   <Card size="small">
                     <Space wrap>
-                      <div>Total Debit: {totalsText.gl.debit}</div>
-                      <div>Total Credit: {totalsText.gl.credit}</div>
+                      <div>Total Debit: {glSummaryTotals?.totalDebit ?? '-'}</div>
+                      <div>Total Credit: {glSummaryTotals?.totalCredit ?? '-'}</div>
                     </Space>
                   </Card>
 
@@ -343,7 +344,11 @@ export default function ReportsView() {
               label: 'Trial Balance',
               children: (
                 <Space direction="vertical" style={{ width: '100%' }}>
-                  <Form form={trialForm} layout="vertical" initialValues={{ fromDate: dayjs().startOf('month'), toDate: dayjs().endOf('month') }}>
+                  <Form
+                    form={trialForm}
+                    layout="vertical"
+                    initialValues={{ fromDate: dayjs().startOf('month'), toDate: dayjs().endOf('month') }}
+                  >
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
                       <Form.Item name="fromDate" label="From" rules={[{ required: true }]}>
                         <DatePicker style={{ width: '100%' }} />
@@ -359,8 +364,8 @@ export default function ReportsView() {
 
                   <Card size="small">
                     <Space wrap>
-                      <div>Total Debit: {totalsText.trial.debit}</div>
-                      <div>Total Credit: {totalsText.trial.credit}</div>
+                      <div>Total Debit: {trialTotals?.totalDebit ?? '-'}</div>
+                      <div>Total Credit: {trialTotals?.totalCredit ?? '-'}</div>
                     </Space>
                   </Card>
 
@@ -379,7 +384,11 @@ export default function ReportsView() {
               label: 'Profit & Loss',
               children: (
                 <Space direction="vertical" style={{ width: '100%' }}>
-                  <Form form={plForm} layout="vertical" initialValues={{ fromDate: dayjs().startOf('month'), toDate: dayjs().endOf('month') }}>
+                  <Form
+                    form={plForm}
+                    layout="vertical"
+                    initialValues={{ fromDate: dayjs().startOf('month'), toDate: dayjs().endOf('month') }}
+                  >
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
                       <Form.Item name="fromDate" label="From" rules={[{ required: true }]}>
                         <DatePicker style={{ width: '100%' }} />
@@ -395,9 +404,9 @@ export default function ReportsView() {
 
                   <Card size="small">
                     <Space wrap>
-                      <div>Total Revenue: {totalsText.pl.revenue}</div>
-                      <div>Total Expense: {totalsText.pl.expense}</div>
-                      <div>Net Income: {totalsText.pl.net}</div>
+                      <div>Total Revenue: {plTotals?.totalRevenue ?? '-'}</div>
+                      <div>Total Expense: {plTotals?.totalExpense ?? '-'}</div>
+                      <div>Net Income: {plTotals?.netIncome ?? '-'}</div>
                     </Space>
                   </Card>
 
@@ -429,9 +438,9 @@ export default function ReportsView() {
 
                   <Card size="small">
                     <Space wrap>
-                      <div>Total Assets: {totalsText.bs.assets}</div>
-                      <div>Total Liabilities: {totalsText.bs.liabilities}</div>
-                      <div>Total Equity: {totalsText.bs.equity}</div>
+                      <div>Total Assets: {bsTotals?.totalAssets ?? '-'}</div>
+                      <div>Total Liabilities: {bsTotals?.totalLiabilities ?? '-'}</div>
+                      <div>Total Equity: {bsTotals?.totalEquity ?? '-'}</div>
                     </Space>
                   </Card>
 

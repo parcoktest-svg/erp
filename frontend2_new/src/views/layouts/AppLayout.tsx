@@ -1,8 +1,9 @@
-import { Layout, Menu, Typography } from 'antd'
+import { Button, Layout, Menu, Space, Typography } from 'antd'
 import type { MenuProps } from 'antd'
 import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/stores/auth'
 
 const { Sider, Content, Header } = Layout
 
@@ -15,6 +16,8 @@ function item(label: ReactNode, key: string, children?: MenuItem[]): MenuItem {
 export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
+  const role = useAuthStore((s) => s.role)
+  const logout = useAuthStore((s) => s.logout)
 
   const items: MenuItem[] = useMemo(
     () => [
@@ -97,7 +100,19 @@ export default function AppLayout() {
         />
       </Sider>
       <Layout>
-        <Header style={{ background: '#fff', borderBottom: '1px solid #f0f0f0' }} />
+        <Header style={{ background: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <Space>
+            <Typography.Text type="secondary">{role ? `Role: ${role}` : ''}</Typography.Text>
+            <Button
+              onClick={() => {
+                logout()
+                navigate('/login', { replace: true })
+              }}
+            >
+              Logout
+            </Button>
+          </Space>
+        </Header>
         <Content style={{ padding: 16 }}>
           <Outlet />
         </Content>

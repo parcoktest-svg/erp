@@ -36,6 +36,7 @@ import FinanceReportsView from '@/views/modules/finance/ReportsView'
 
 import HrDepartmentsView from '@/views/modules/hr/DepartmentsView'
 import HrEmployeesView from '@/views/modules/hr/EmployeesView'
+import HrOverviewView from '@/views/modules/hr/OverviewView'
 
 import AdminUsersView from '@/views/modules/admin/UsersView'
 import ApiExplorerView from '@/views/tools/ApiExplorerView'
@@ -95,6 +96,7 @@ export default function AppRoutes() {
 
           <Route path="/modules/hr/departments" element={<HrDepartmentsView />} />
           <Route path="/modules/hr/employees" element={<HrEmployeesView />} />
+          <Route path="/modules/hr" element={<HrOverviewView />} />
 
           <Route path="/modules/admin/users" element={<AdminUsersView />} />
           <Route path="/tools/api-explorer" element={<ApiExplorerView />} />

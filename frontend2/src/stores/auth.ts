@@ -13,7 +13,7 @@ type AuthState = {
   logout: () => void
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   token: Cookies.get(TOKEN_KEY) || '',
   role: Cookies.get(ROLE_KEY) || '',
   isAuthenticated: Boolean(Cookies.get(TOKEN_KEY) || ''),

@@ -74,6 +74,7 @@ export default function AppLayout() {
       key: 'hr',
       label: 'HR',
       children: [
+        { key: '/modules/hr', label: 'Overview' },
         { key: '/modules/hr/departments', label: 'Departments' },
         { key: '/modules/hr/employees', label: 'Employees' }
       ]

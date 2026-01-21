@@ -2,7 +2,7 @@ import { Button, Card, Form, Input, Modal, Popconfirm, Space, Table, Typography,
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
 import { hrApi } from '@/utils/api'
-import CompanyOrgBar from '@/views/modules/common/CompanyOrgBar'
+import { getApiErrorMessage } from '@/utils/error'
 
 type DepartmentRow = {
   id: number
@@ -29,7 +29,7 @@ export default function DepartmentsView() {
     try {
       setRows((await hrApi.listDepartments()) || [])
     } catch (e: any) {
-      message.error(e?.response?.data?.message || e?.message || 'Failed to load departments')
+      message.error(getApiErrorMessage(e, 'Failed to load departments'))
       setRows([])
     } finally {
       setLoading(false)
@@ -78,7 +78,7 @@ export default function DepartmentsView() {
                 message.success('Deleted')
                 await load()
               } catch (e: any) {
-                message.error(e?.response?.data?.message || e?.message || 'Failed to delete')
+                message.error(getApiErrorMessage(e, 'Failed to delete department'))
               }
             }}
           >
@@ -119,10 +119,6 @@ export default function DepartmentsView() {
       </Card>
 
       <Card>
-        <CompanyOrgBar showOrg={false} />
-      </Card>
-
-      <Card>
         <Space style={{ marginBottom: 12 }} wrap>
           <Input placeholder="Search name" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 260 }} />
         </Space>
@@ -144,8 +140,11 @@ export default function DepartmentsView() {
             setCreateOpen(false)
             await load()
           } catch (e: any) {
-            if (e?.errorFields) return
-            message.error(e?.response?.data?.message || e?.message || 'Failed to create')
+            if (e?.errorFields) {
+              message.error('Please complete required fields')
+              return
+            }
+            message.error(getApiErrorMessage(e, 'Failed to create department'))
           } finally {
             setSaving(false)
           }
@@ -168,7 +167,10 @@ export default function DepartmentsView() {
           setEditingId(null)
         }}
         onOk={async () => {
-          if (!editingId) return
+          if (editingId == null) {
+            message.error('Department id is missing')
+            return
+          }
           try {
             const v = await editForm.validateFields()
             setEditSaving(true)
@@ -178,8 +180,11 @@ export default function DepartmentsView() {
             setEditingId(null)
             await load()
           } catch (e: any) {
-            if (e?.errorFields) return
-            message.error(e?.response?.data?.message || e?.message || 'Failed to update')
+            if (e?.errorFields) {
+              message.error('Please complete required fields')
+              return
+            }
+            message.error(getApiErrorMessage(e, 'Failed to update department'))
           } finally {
             setEditSaving(false)
           }

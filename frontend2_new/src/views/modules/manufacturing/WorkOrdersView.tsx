@@ -77,6 +77,7 @@ export default function WorkOrdersView() {
   const [completeOpen, setCompleteOpen] = useState(false)
   const [completeId, setCompleteId] = useState<number | null>(null)
   const [completeForm] = Form.useForm()
+  const [completing, setCompleting] = useState(false)
 
   const [voidOpen, setVoidOpen] = useState(false)
   const [voidId, setVoidId] = useState<number | null>(null)
@@ -467,19 +468,44 @@ export default function WorkOrdersView() {
       <Modal
         open={completeOpen}
         title="Complete Work Order"
-        onCancel={() => setCompleteOpen(false)}
+        onCancel={() => {
+          setCompleteOpen(false)
+          setCompleteId(null)
+        }}
         okText="Complete"
+        confirmLoading={completing}
         onOk={async () => {
-          if (!companyId || !completeId) return
+          if (!companyId) {
+            message.error('Company is required')
+            return
+          }
+          if (completeId == null) {
+            message.error('Work order id is missing')
+            return
+          }
           try {
+            setCompleting(true)
             const values = await completeForm.validateFields()
             await manufacturingApi.completeWorkOrder(companyId, completeId, { completionDate: toLocalDateString(values.completionDate) })
             message.success('Completed')
             setCompleteOpen(false)
+            setCompleteId(null)
             await load(companyId)
           } catch (e: any) {
-            if (e?.errorFields) return
-            message.error(getApiErrorMessage(e, 'Failed to complete work order'))
+            if (e?.errorFields) {
+              message.error('Please complete required fields')
+              return
+            }
+            // eslint-disable-next-line no-console
+            console.error('Work order complete failed:', e)
+            const errMsg = getApiErrorMessage(e, 'Failed to complete work order')
+            message.error(errMsg)
+            Modal.error({
+              title: 'Failed to complete work order',
+              content: errMsg
+            })
+          } finally {
+            setCompleting(false)
           }
         }}
       >

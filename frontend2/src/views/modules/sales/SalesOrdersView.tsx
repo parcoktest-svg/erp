@@ -150,7 +150,6 @@ export default function SalesOrdersView() {
 
   const [customers, setCustomers] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
-  const [priceLists, setPriceLists] = useState<any[]>([])
   const [priceListVersions, setPriceListVersions] = useState<any[]>([])
   const [currencies, setCurrencies] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
@@ -179,7 +178,6 @@ export default function SalesOrdersView() {
     if (!companyId) {
       setCustomers([])
       setProducts([])
-      setPriceLists([])
       setPriceListVersions([])
       setCurrencies([])
       setDepartments([])
@@ -200,7 +198,6 @@ export default function SalesOrdersView() {
 
       setCustomers((bps || []).filter((x: any) => x.type === 'CUSTOMER' || x.type === 'BOTH'))
       setProducts(prods || [])
-      setPriceLists(pls || [])
       setCurrencies(curs || [])
       setDepartments(depts || [])
       setEmployees(emps || [])
@@ -212,7 +209,6 @@ export default function SalesOrdersView() {
     } catch {
       setCustomers([])
       setProducts([])
-      setPriceLists([])
       setPriceListVersions([])
       setCurrencies([])
       setDepartments([])

@@ -77,6 +77,7 @@ export default function AdjustmentsView() {
 
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<AdjustmentRow | null>(null)
+  const [saving, setSaving] = useState(false)
   const [form] = Form.useForm()
 
   const loadCompanies = async () => {
@@ -397,22 +398,26 @@ export default function AdjustmentsView() {
         width={980}
         onCancel={() => setOpen(false)}
         onOk={async () => {
-          if (!companyId) return
+          if (!companyId) {
+            message.error('Company is required')
+            return
+          }
           try {
+            setSaving(true)
             const values = await form.validateFields()
             const payload: any = {
               adjustmentDate: toLocalDateString(values.adjustmentDate),
               description: values.description || null,
               orgId: values.orgId ?? null,
               lines: (values.lines || []).map((l: any) => ({
-                productId: l.productId,
-                locatorId: l.locatorId,
-                quantityAdjusted: l.quantityAdjusted,
-                adjustmentAmount: l.adjustmentAmount,
+                productId: l.productId != null ? Number(l.productId) : null,
+                locatorId: l.locatorId != null ? Number(l.locatorId) : null,
+                quantityAdjusted: l.quantityAdjusted != null ? Number(l.quantityAdjusted) : null,
+                adjustmentAmount: l.adjustmentAmount != null ? Number(l.adjustmentAmount) : null,
                 notes: l.notes || null
               }))
             }
-            if (!payload.orgId) delete payload.orgId
+            if (payload.orgId == null) delete payload.orgId
 
             if (editing) {
               await inventoryApi.updateAdjustment(companyId, editing.id, payload)
@@ -424,11 +429,19 @@ export default function AdjustmentsView() {
             setOpen(false)
             await load(companyId)
           } catch (e: any) {
-            if (e?.errorFields) return
+            if (e?.errorFields) {
+              message.error('Please complete required fields')
+              return
+            }
+            // eslint-disable-next-line no-console
+            console.error('Adjustment save failed:', e)
             message.error(getApiErrorMessage(e, editing ? 'Failed to update adjustment' : 'Failed to create adjustment'))
+          } finally {
+            setSaving(false)
           }
         }}
         okText={editing ? 'Update' : 'Create'}
+        confirmLoading={saving}
       >
         <Form layout="vertical" form={form}>
           <Space wrap style={{ width: '100%' }}>

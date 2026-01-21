@@ -283,7 +283,7 @@ export default function ReportsView() {
                       <div>Total 0-30: {totalsText.aging.t0}</div>
                       <div>Total 31-60: {totalsText.aging.t1}</div>
                       <div>Total 61-90: {totalsText.aging.t2}</div>
-                      <div>Total >90: {totalsText.aging.t3}</div>
+                      <div>Total &gt;90: {totalsText.aging.t3}</div>
                       <div>Total Open: {totalsText.aging.t4}</div>
                     </Space>
                   </Card>

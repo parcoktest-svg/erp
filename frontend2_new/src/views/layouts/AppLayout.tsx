@@ -49,8 +49,12 @@ export default function AppLayout() {
         item('Periods', '/modules/finance/periods'),
         item('Reports', '/modules/finance/reports')
       ]),
-      item('HR', 'hr', [item('Overview', '/modules/hr')]),
-      item('Admin', 'admin', [item('Overview', '/modules/admin')]),
+      item('HR', 'hr', [
+        item('Overview', '/modules/hr'),
+        item('Departments', '/modules/hr/departments'),
+        item('Employees', '/modules/hr/employees')
+      ]),
+      item('Admin', 'admin', [item('User Management', '/modules/admin/users')]),
       item('Tools', 'tools', [item('Overview', '/tools')])
     ],
     []

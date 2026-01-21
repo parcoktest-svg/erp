@@ -35,6 +35,12 @@ import GlAccountsView from '@/views/modules/finance/GlAccountsView'
 import FinancePeriodsView from '@/views/modules/finance/FinancePeriodsView'
 import FinanceReportsView from '@/views/modules/finance/FinanceReportsView'
 
+import HrOverviewView from '@/views/modules/hr/HrOverviewView'
+import HrDepartmentsView from '@/views/modules/hr/DepartmentsView'
+import HrEmployeesView from '@/views/modules/hr/EmployeesView'
+
+import AdminUsersView from '@/views/modules/admin/UsersView'
+
 function RequireAuth() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const location = useLocation()
@@ -68,7 +74,9 @@ export default function AppRoutes() {
           <Route path="/modules/inventory" element={<PlaceholderView title="Inventory" />} />
           <Route path="/modules/manufacturing" element={<ManufacturingOverviewView />} />
           <Route path="/modules/finance" element={<FinanceOverviewView />} />
-          <Route path="/modules/hr" element={<PlaceholderView title="HR" />} />
+          <Route path="/modules/hr/departments" element={<HrDepartmentsView />} />
+          <Route path="/modules/hr/employees" element={<HrEmployeesView />} />
+          <Route path="/modules/hr" element={<HrOverviewView />} />
           <Route path="/modules/admin" element={<PlaceholderView title="Admin" />} />
           <Route path="/tools" element={<PlaceholderView title="Tools" />} />
 
@@ -96,6 +104,8 @@ export default function AppRoutes() {
           <Route path="/modules/finance/gl-accounts" element={<GlAccountsView />} />
           <Route path="/modules/finance/periods" element={<FinancePeriodsView />} />
           <Route path="/modules/finance/reports" element={<FinanceReportsView />} />
+
+          <Route path="/modules/admin/users" element={<AdminUsersView />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

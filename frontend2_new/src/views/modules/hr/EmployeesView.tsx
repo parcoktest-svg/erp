@@ -2,7 +2,7 @@ import { Button, Card, Input, InputNumber, Modal, Popconfirm, Select, Space, Swi
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
 import { hrApi } from '@/utils/api'
-import CompanyOrgBar from '@/views/modules/common/CompanyOrgBar'
+import { getApiErrorMessage } from '@/utils/error'
 
 type DepartmentRow = { id: number; name?: string }
 
@@ -79,7 +79,7 @@ export default function EmployeesView() {
     try {
       setRows((await hrApi.listEmployees()) || [])
     } catch (e: any) {
-      message.error(e?.response?.data?.message || e?.message || 'Failed to load employees')
+      message.error(getApiErrorMessage(e, 'Failed to load employees'))
       setRows([])
     } finally {
       setLoading(false)
@@ -167,7 +167,7 @@ export default function EmployeesView() {
                 message.success('Updated status')
                 await loadEmployees()
               } catch (e: any) {
-                message.error(e?.response?.data?.message || e?.message || 'Failed to toggle status')
+                message.error(getApiErrorMessage(e, 'Failed to toggle status'))
               }
             }}
           >
@@ -183,7 +183,7 @@ export default function EmployeesView() {
                 message.success('Deleted')
                 await loadEmployees()
               } catch (e: any) {
-                message.error(e?.response?.data?.message || e?.message || 'Failed to delete')
+                message.error(getApiErrorMessage(e, 'Failed to delete employee'))
               }
             }}
           >
@@ -223,10 +223,6 @@ export default function EmployeesView() {
             </Button>
           </Space>
         </Space>
-      </Card>
-
-      <Card>
-        <CompanyOrgBar showOrg={false} />
       </Card>
 
       <Card>
@@ -286,7 +282,10 @@ export default function EmployeesView() {
               await hrApi.createEmployee(payload)
               message.success('Created')
             } else {
-              if (!editingId) return
+              if (editingId == null) {
+                message.error('Employee id is missing')
+                return
+              }
               await hrApi.updateEmployee(editingId, payload)
               message.success('Saved')
             }
@@ -294,7 +293,7 @@ export default function EmployeesView() {
             setOpen(false)
             await loadEmployees()
           } catch (e: any) {
-            message.error(e?.response?.data?.message || e?.message || 'Failed')
+            message.error(getApiErrorMessage(e, 'Failed'))
           } finally {
             setSaving(false)
           }

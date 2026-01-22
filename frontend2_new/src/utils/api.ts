@@ -112,6 +112,8 @@ export const purchaseApi = {
     http.delete(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}`).then((r) => r.data),
   approvePurchaseOrder: (companyId: any, purchaseOrderId: any) =>
     http.post(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}/approve`).then((r) => r.data),
+  voidPurchaseOrder: (companyId: any, purchaseOrderId: any, payload: any) =>
+    http.post(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}/void`, payload).then((r) => r.data),
   createGoodsReceipt: (companyId: any, purchaseOrderId: any, payload: any) =>
     http.post(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}/goods-receipts`, payload).then((r) => r.data)
 }

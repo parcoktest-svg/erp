@@ -11,6 +11,7 @@ public class PurchaseOrderLineDto {
     private BigDecimal price;
     private BigDecimal lineNet;
     private BigDecimal receivedQty;
+    private BigDecimal invoicedQty;
 
     public Long getId() {
         return id;
@@ -66,5 +67,13 @@ public class PurchaseOrderLineDto {
 
     public void setReceivedQty(BigDecimal receivedQty) {
         this.receivedQty = receivedQty;
+    }
+
+    public BigDecimal getInvoicedQty() {
+        return invoicedQty;
+    }
+
+    public void setInvoicedQty(BigDecimal invoicedQty) {
+        this.invoicedQty = invoicedQty;
     }
 }

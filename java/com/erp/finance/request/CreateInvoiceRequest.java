@@ -25,6 +25,8 @@ public class CreateInvoiceRequest {
 
     private Long salesOrderId;
 
+    private Long purchaseOrderId;
+
     @Valid
     @NotNull
     private List<CreateInvoiceLineRequest> lines;
@@ -77,6 +79,14 @@ public class CreateInvoiceRequest {
         this.salesOrderId = salesOrderId;
     }
 
+    public Long getPurchaseOrderId() {
+        return purchaseOrderId;
+    }
+
+    public void setPurchaseOrderId(Long purchaseOrderId) {
+        this.purchaseOrderId = purchaseOrderId;
+    }
+
     public List<CreateInvoiceLineRequest> getLines() {
         return lines;
     }
@@ -88,6 +98,8 @@ public class CreateInvoiceRequest {
     public static class CreateInvoiceLineRequest {
         @NotNull
         private Long productId;
+
+        private Long purchaseOrderLineId;
 
         @NotNull
         private java.math.BigDecimal qty;
@@ -101,6 +113,14 @@ public class CreateInvoiceRequest {
 
         public void setProductId(Long productId) {
             this.productId = productId;
+        }
+
+        public Long getPurchaseOrderLineId() {
+            return purchaseOrderLineId;
+        }
+
+        public void setPurchaseOrderLineId(Long purchaseOrderLineId) {
+            this.purchaseOrderLineId = purchaseOrderLineId;
         }
 
         public java.math.BigDecimal getQty() {

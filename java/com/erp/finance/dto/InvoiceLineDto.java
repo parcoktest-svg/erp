@@ -10,6 +10,7 @@ public class InvoiceLineDto {
     private BigDecimal qty;
     private BigDecimal price;
     private BigDecimal lineNet;
+    private Long purchaseOrderLineId;
 
     public Long getId() {
         return id;
@@ -57,5 +58,13 @@ public class InvoiceLineDto {
 
     public void setLineNet(BigDecimal lineNet) {
         this.lineNet = lineNet;
+    }
+
+    public Long getPurchaseOrderLineId() {
+        return purchaseOrderLineId;
+    }
+
+    public void setPurchaseOrderLineId(Long purchaseOrderLineId) {
+        this.purchaseOrderLineId = purchaseOrderLineId;
     }
 }

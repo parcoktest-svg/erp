@@ -114,6 +114,7 @@ public class InvoiceService {
         invoice.setInvoiceDate(request.getInvoiceDate());
         invoice.setDocumentNo(documentNoService.nextDocumentNo(companyId, DocumentType.INVOICE));
         invoice.setSalesOrderId(request.getSalesOrderId());
+        invoice.setPurchaseOrderId(request.getPurchaseOrderId());
 
         List<InvoiceLine> lines = new ArrayList<>();
         BigDecimal totalNet = BigDecimal.ZERO;
@@ -133,6 +134,7 @@ public class InvoiceService {
             line.setQty(qty);
             line.setPrice(price);
             line.setLineNet(lineNet);
+            line.setPurchaseOrderLineId(lineReq.getPurchaseOrderLineId());
 
             lines.add(line);
             totalNet = totalNet.add(lineNet);

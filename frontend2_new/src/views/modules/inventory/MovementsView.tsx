@@ -2,6 +2,7 @@ import { Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Spac
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { coreApi, inventoryApi, masterDataApi } from '@/utils/api'
 import { useContextStore } from '@/stores/context'
 import { getApiErrorMessage } from '@/utils/error'
@@ -33,6 +34,8 @@ export default function MovementsView() {
   const companyId = useContextStore((s) => s.companyId)
   const setCompanyId = useContextStore((s) => s.setCompanyId)
 
+  const [searchParams] = useSearchParams()
+
   const [companyLoading, setCompanyLoading] = useState(false)
   const [companies, setCompanies] = useState<CompanyRow[]>([])
 
@@ -43,6 +46,8 @@ export default function MovementsView() {
 
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<MovementRow[]>([])
+
+  const [q, setQ] = useState('')
 
   const [open, setOpen] = useState(false)
   const [form] = Form.useForm()
@@ -84,7 +89,9 @@ export default function MovementsView() {
   const load = async (cid: number) => {
     setLoading(true)
     try {
-      const res = await inventoryApi.listMovements(cid)
+      const res = await inventoryApi.listMovements(cid, {
+        q: q || undefined
+      })
       setRows(res || [])
     } catch (e: any) {
       message.error(getApiErrorMessage(e, 'Failed to load movements'))
@@ -100,11 +107,23 @@ export default function MovementsView() {
   }, [])
 
   useEffect(() => {
+    const qq = searchParams.get('q')
+    setQ(qq ? String(qq) : '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  useEffect(() => {
     if (!companyId) return
     void loadLookups(companyId)
     void load(companyId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId])
+
+  useEffect(() => {
+    if (!companyId) return
+    void load(companyId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, q])
 
   const companyOptions = useMemo(
     () => companies.map((c) => ({ value: c.id, label: `${c.code || c.id} - ${c.name || ''}` })),
@@ -195,6 +214,15 @@ export default function MovementsView() {
               New Movement
             </Button>
           </Space>
+        </Space>
+      </Card>
+
+      <Card>
+        <Space wrap style={{ width: '100%' }}>
+          <div style={{ minWidth: 320 }}>
+            <Typography.Text strong>Search</Typography.Text>
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search doc no / date / description" />
+          </div>
         </Space>
       </Card>
 

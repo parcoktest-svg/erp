@@ -38,6 +38,9 @@ public class InvoiceLine extends BaseEntity {
     @Column(nullable = false)
     private BigDecimal lineNet = BigDecimal.ZERO;
 
+    @Column(name = "purchase_order_line_id")
+    private Long purchaseOrderLineId;
+
     public Invoice getInvoice() {
         return invoice;
     }
@@ -84,5 +87,13 @@ public class InvoiceLine extends BaseEntity {
 
     public void setLineNet(BigDecimal lineNet) {
         this.lineNet = lineNet;
+    }
+
+    public Long getPurchaseOrderLineId() {
+        return purchaseOrderLineId;
+    }
+
+    public void setPurchaseOrderLineId(Long purchaseOrderLineId) {
+        this.purchaseOrderLineId = purchaseOrderLineId;
     }
 }

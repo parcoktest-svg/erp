@@ -27,6 +27,7 @@ import com.erp.purchase.entity.PurchaseOrderLine;
 import com.erp.purchase.repository.PurchaseOrderRepository;
 import com.erp.purchase.request.CreatePurchaseOrderRequest;
 import com.erp.purchase.request.UpdatePurchaseOrderRequest;
+import com.erp.purchase.request.VoidPurchaseOrderRequest;
 
 @Service
 public class PurchaseOrderService {
@@ -208,6 +209,23 @@ public class PurchaseOrderService {
         }
 
         po.setStatus(DocumentStatus.APPROVED);
+        return purchaseOrderRepository.save(po);
+    }
+
+    @Transactional
+    public PurchaseOrder voidOrder(Long companyId, Long purchaseOrderId, VoidPurchaseOrderRequest request) {
+        PurchaseOrder po = get(companyId, purchaseOrderId);
+
+        if (po.getStatus() == DocumentStatus.VOIDED) {
+            throw new IllegalArgumentException("Purchase Order already voided");
+        }
+
+        if (po.getStatus() != DocumentStatus.DRAFTED && po.getStatus() != DocumentStatus.APPROVED) {
+            throw new IllegalArgumentException("Only DRAFTED or APPROVED Purchase Order can be voided");
+        }
+
+        // request.getVoidDate() is validated by @NotNull; stored nowhere for now.
+        po.setStatus(DocumentStatus.VOIDED);
         return purchaseOrderRepository.save(po);
     }
 }

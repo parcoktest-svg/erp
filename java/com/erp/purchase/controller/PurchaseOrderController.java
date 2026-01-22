@@ -13,12 +13,21 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.erp.finance.dto.InvoiceDto;
+import com.erp.finance.dto.InvoiceLineDto;
+import com.erp.finance.dto.InvoiceTaxLineDto;
+import com.erp.finance.entity.Invoice;
+import com.erp.finance.entity.InvoiceLine;
+import com.erp.finance.entity.InvoiceTaxLine;
 import com.erp.purchase.dto.PurchaseOrderDto;
 import com.erp.purchase.dto.PurchaseOrderLineDto;
 import com.erp.purchase.entity.PurchaseOrder;
 import com.erp.purchase.entity.PurchaseOrderLine;
+import com.erp.purchase.request.CreateInvoiceFromPurchaseOrderRequest;
 import com.erp.purchase.request.CreatePurchaseOrderRequest;
 import com.erp.purchase.request.UpdatePurchaseOrderRequest;
+import com.erp.purchase.request.VoidPurchaseOrderRequest;
+import com.erp.purchase.service.PurchaseInvoicingService;
 import com.erp.purchase.service.PurchaseOrderService;
 
 import jakarta.validation.Valid;
@@ -28,9 +37,11 @@ import jakarta.validation.Valid;
 public class PurchaseOrderController {
 
     private final PurchaseOrderService purchaseOrderService;
+    private final PurchaseInvoicingService purchaseInvoicingService;
 
-    public PurchaseOrderController(PurchaseOrderService purchaseOrderService) {
+    public PurchaseOrderController(PurchaseOrderService purchaseOrderService, PurchaseInvoicingService purchaseInvoicingService) {
         this.purchaseOrderService = purchaseOrderService;
+        this.purchaseInvoicingService = purchaseInvoicingService;
     }
 
     @GetMapping
@@ -66,6 +77,24 @@ public class PurchaseOrderController {
         return ResponseEntity.ok(toDto(updated));
     }
 
+    @PostMapping("/{purchaseOrderId}/void")
+    public ResponseEntity<PurchaseOrderDto> voidOrder(
+            @PathVariable Long companyId,
+            @PathVariable Long purchaseOrderId,
+            @Valid @RequestBody VoidPurchaseOrderRequest request) {
+        PurchaseOrder updated = purchaseOrderService.voidOrder(companyId, purchaseOrderId, request);
+        return ResponseEntity.ok(toDto(updated));
+    }
+
+    @PostMapping("/{purchaseOrderId}/invoices")
+    public ResponseEntity<InvoiceDto> createApInvoice(
+            @PathVariable Long companyId,
+            @PathVariable Long purchaseOrderId,
+            @Valid @RequestBody CreateInvoiceFromPurchaseOrderRequest request) {
+        Invoice invoice = purchaseInvoicingService.createApInvoiceFromPurchaseOrder(companyId, purchaseOrderId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toInvoiceDto(invoice));
+    }
+
     private PurchaseOrderDto toDto(PurchaseOrder po) {
         PurchaseOrderDto dto = new PurchaseOrderDto();
         dto.setId(po.getId());
@@ -92,6 +121,52 @@ public class PurchaseOrderController {
         dto.setPrice(line.getPrice());
         dto.setLineNet(line.getLineNet());
         dto.setReceivedQty(line.getReceivedQty());
+        dto.setInvoicedQty(line.getInvoicedQty());
+        return dto;
+    }
+
+    private InvoiceDto toInvoiceDto(Invoice invoice) {
+        InvoiceDto dto = new InvoiceDto();
+        dto.setId(invoice.getId());
+        dto.setCompanyId(invoice.getCompany() != null ? invoice.getCompany().getId() : null);
+        dto.setOrgId(invoice.getOrg() != null ? invoice.getOrg().getId() : null);
+        dto.setBusinessPartnerId(invoice.getBusinessPartner() != null ? invoice.getBusinessPartner().getId() : null);
+        dto.setInvoiceType(invoice.getInvoiceType());
+        dto.setTaxRateId(invoice.getTaxRate() != null ? invoice.getTaxRate().getId() : null);
+        dto.setDocumentNo(invoice.getDocumentNo());
+        dto.setStatus(invoice.getStatus());
+        dto.setInvoiceDate(invoice.getInvoiceDate());
+        dto.setTotalNet(invoice.getTotalNet());
+        dto.setTotalTax(invoice.getTotalTax());
+        dto.setGrandTotal(invoice.getGrandTotal());
+        dto.setPaidAmount(invoice.getPaidAmount());
+        dto.setOpenAmount(invoice.getOpenAmount());
+        dto.setSalesOrderId(invoice.getSalesOrderId());
+        dto.setPurchaseOrderId(invoice.getPurchaseOrderId());
+        dto.setLines(invoice.getLines() != null ? invoice.getLines().stream().map(this::toInvoiceLineDto).toList() : List.of());
+        dto.setTaxLines(invoice.getTaxLines() != null ? invoice.getTaxLines().stream().map(this::toInvoiceTaxLineDto).toList() : List.of());
+        return dto;
+    }
+
+    private InvoiceLineDto toInvoiceLineDto(InvoiceLine line) {
+        InvoiceLineDto dto = new InvoiceLineDto();
+        dto.setId(line.getId());
+        dto.setProductId(line.getProduct() != null ? line.getProduct().getId() : null);
+        dto.setUomId(line.getUom() != null ? line.getUom().getId() : null);
+        dto.setQty(line.getQty());
+        dto.setPrice(line.getPrice());
+        dto.setLineNet(line.getLineNet());
+        dto.setPurchaseOrderLineId(line.getPurchaseOrderLineId());
+        return dto;
+    }
+
+    private InvoiceTaxLineDto toInvoiceTaxLineDto(InvoiceTaxLine line) {
+        InvoiceTaxLineDto dto = new InvoiceTaxLineDto();
+        dto.setId(line.getId());
+        dto.setTaxRateId(line.getTaxRate() != null ? line.getTaxRate().getId() : null);
+        dto.setTaxBase(line.getTaxBase());
+        dto.setTaxAmount(line.getTaxAmount());
+        dto.setRoundingAmount(line.getRoundingAmount());
         return dto;
     }
 }

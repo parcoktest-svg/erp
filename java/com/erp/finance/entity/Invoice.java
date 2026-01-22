@@ -80,6 +80,9 @@ public class Invoice extends BaseEntity {
     @Column(name = "sales_order_id")
     private Long salesOrderId;
 
+    @Column(name = "purchase_order_id")
+    private Long purchaseOrderId;
+
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InvoiceLine> lines = new ArrayList<>();
 
@@ -204,6 +207,14 @@ public class Invoice extends BaseEntity {
 
     public void setSalesOrderId(Long salesOrderId) {
         this.salesOrderId = salesOrderId;
+    }
+
+    public Long getPurchaseOrderId() {
+        return purchaseOrderId;
+    }
+
+    public void setPurchaseOrderId(Long purchaseOrderId) {
+        this.purchaseOrderId = purchaseOrderId;
     }
 
     public List<InvoiceLine> getLines() {

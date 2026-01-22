@@ -41,6 +41,9 @@ public class PurchaseOrderLine extends BaseEntity {
     @Column(nullable = false)
     private BigDecimal receivedQty = BigDecimal.ZERO;
 
+    @Column(nullable = false)
+    private BigDecimal invoicedQty = BigDecimal.ZERO;
+
     public PurchaseOrder getPurchaseOrder() {
         return purchaseOrder;
     }
@@ -95,5 +98,13 @@ public class PurchaseOrderLine extends BaseEntity {
 
     public void setReceivedQty(BigDecimal receivedQty) {
         this.receivedQty = receivedQty;
+    }
+
+    public BigDecimal getInvoicedQty() {
+        return invoicedQty;
+    }
+
+    public void setInvoicedQty(BigDecimal invoicedQty) {
+        this.invoicedQty = invoicedQty;
     }
 }

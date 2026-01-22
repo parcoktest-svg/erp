@@ -196,6 +196,7 @@ public class SalesOrderController {
         dto.setPaidAmount(invoice.getPaidAmount());
         dto.setOpenAmount(invoice.getOpenAmount());
         dto.setSalesOrderId(invoice.getSalesOrderId());
+        dto.setPurchaseOrderId(invoice.getPurchaseOrderId());
         dto.setLines(invoice.getLines() != null ? invoice.getLines().stream().map(this::toInvoiceLineDto).toList() : List.of());
         dto.setTaxLines(invoice.getTaxLines() != null ? invoice.getTaxLines().stream().map(this::toInvoiceTaxLineDto).toList() : List.of());
         return dto;
@@ -209,6 +210,7 @@ public class SalesOrderController {
         dto.setQty(line.getQty());
         dto.setPrice(line.getPrice());
         dto.setLineNet(line.getLineNet());
+        dto.setPurchaseOrderLineId(line.getPurchaseOrderLineId());
         return dto;
     }
 

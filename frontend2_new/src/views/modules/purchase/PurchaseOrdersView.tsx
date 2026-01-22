@@ -17,6 +17,7 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { coreApi, inventoryApi, masterDataApi, purchaseApi } from '@/utils/api'
 import { useContextStore } from '@/stores/context'
 import { getApiErrorMessage } from '@/utils/error'
@@ -86,6 +87,12 @@ type LocatorRow = {
   name?: string
 }
 
+type MovementRow = {
+  id: number
+  documentNo?: string
+  status?: string
+}
+
 function toLocalDateString(d: any): string {
   if (!d) return ''
   return dayjs(d).format('YYYY-MM-DD')
@@ -94,6 +101,8 @@ function toLocalDateString(d: any): string {
 export default function PurchaseOrdersView() {
   const companyId = useContextStore((s) => s.companyId)
   const setCompanyId = useContextStore((s) => s.setCompanyId)
+
+  const navigate = useNavigate()
 
   const [companyLoading, setCompanyLoading] = useState(false)
   const [companies, setCompanies] = useState<CompanyRow[]>([])
@@ -122,6 +131,15 @@ export default function PurchaseOrdersView() {
   const [receiptForm] = Form.useForm()
   const [locatorLoading, setLocatorLoading] = useState(false)
   const [locators, setLocators] = useState<LocatorRow[]>([])
+
+  const [createdReceiptMovement, setCreatedReceiptMovement] = useState<MovementRow | null>(null)
+  const [receiptResultOpen, setReceiptResultOpen] = useState(false)
+  const [receiptCompleting, setReceiptCompleting] = useState(false)
+
+  const [voidOpen, setVoidOpen] = useState(false)
+  const [voidPo, setVoidPo] = useState<PurchaseOrderRow | null>(null)
+  const [voiding, setVoiding] = useState(false)
+  const [voidForm] = Form.useForm()
 
   const loadCompanies = async () => {
     setCompanyLoading(true)
@@ -274,6 +292,7 @@ export default function PurchaseOrdersView() {
           const canApprove = status === 'DRAFTED'
           const canDelete = status === 'DRAFTED'
           const canGoodsReceipt = status === 'APPROVED' || status === 'PARTIALLY_COMPLETED'
+          const canVoid = status === 'DRAFTED' || status === 'APPROVED'
 
           return (
             <Space wrap>
@@ -372,6 +391,20 @@ export default function PurchaseOrdersView() {
                   Delete
                 </Button>
               </Popconfirm>
+
+              <Button
+                size="small"
+                danger
+                disabled={!canVoid}
+                onClick={() => {
+                  setVoidPo(r)
+                  setVoidOpen(true)
+                  voidForm.resetFields()
+                  voidForm.setFieldsValue({ voidDate: dayjs(), reason: '' })
+                }}
+              >
+                Void
+              </Button>
             </Space>
           )
         }
@@ -582,6 +615,71 @@ export default function PurchaseOrdersView() {
       </Modal>
 
       <Modal
+        title="Goods Receipt Created"
+        open={receiptResultOpen}
+        onCancel={() => {
+          setReceiptResultOpen(false)
+          setCreatedReceiptMovement(null)
+        }}
+        footer={null}
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <div>
+            <Typography.Text strong>Movement Doc No:</Typography.Text>
+            <div>{createdReceiptMovement?.documentNo || createdReceiptMovement?.id || '-'}</div>
+          </div>
+          <div>
+            <Typography.Text strong>Status:</Typography.Text>
+            <div>{createdReceiptMovement?.status || '-'}</div>
+          </div>
+
+          <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
+            <Button
+              onClick={() => {
+                const dn = createdReceiptMovement?.documentNo
+                const q = dn ? encodeURIComponent(String(dn)) : ''
+                navigate(`/modules/inventory/movements${q ? `?q=${q}` : ''}`)
+                setReceiptResultOpen(false)
+                setCreatedReceiptMovement(null)
+              }}
+            >
+              Open Movements
+            </Button>
+            <Button
+              type="primary"
+              loading={receiptCompleting}
+              disabled={!companyId || !createdReceiptMovement?.id || String(createdReceiptMovement?.status || '') !== 'DRAFTED'}
+              onClick={async () => {
+                if (!companyId || !createdReceiptMovement?.id) return
+                try {
+                  setReceiptCompleting(true)
+                  await inventoryApi.completeMovement(companyId, createdReceiptMovement.id)
+                  message.success('Goods receipt completed')
+                  setReceiptResultOpen(false)
+                  setCreatedReceiptMovement(null)
+                  await load(companyId)
+                } catch (e: any) {
+                  message.error(getApiErrorMessage(e, 'Failed to complete goods receipt'))
+                } finally {
+                  setReceiptCompleting(false)
+                }
+              }}
+            >
+              Complete Now
+            </Button>
+            <Button
+              onClick={() => {
+                setReceiptResultOpen(false)
+                setCreatedReceiptMovement(null)
+              }}
+            >
+              Close
+            </Button>
+          </Space>
+        </Space>
+      </Modal>
+
+      <Modal
         title={`Goods Receipt${receiptPo?.documentNo ? ` - ${receiptPo.documentNo}` : ''}`}
         open={receiptOpen}
         width={860}
@@ -604,8 +702,13 @@ export default function PurchaseOrdersView() {
               }))
             }
 
-            await purchaseApi.createGoodsReceipt(companyId, receiptPo.id, payload)
+            const mv = (await purchaseApi.createGoodsReceipt(companyId, receiptPo.id, payload)) as any
             message.success('Goods receipt created')
+
+            if (mv && mv.id) {
+              setCreatedReceiptMovement({ id: mv.id, documentNo: mv.documentNo, status: mv.status })
+              setReceiptResultOpen(true)
+            }
 
             setReceiptOpen(false)
             setReceiptPo(null)
@@ -688,6 +791,49 @@ export default function PurchaseOrdersView() {
               </Space>
             )}
           </Form.List>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={`Void Purchase Order${voidPo?.documentNo ? ` - ${voidPo.documentNo}` : ''}`}
+        open={voidOpen}
+        okText="Void"
+        okButtonProps={{ danger: true }}
+        confirmLoading={voiding}
+        onCancel={() => {
+          setVoidOpen(false)
+          setVoidPo(null)
+          voidForm.resetFields()
+        }}
+        onOk={async () => {
+          if (!companyId || !voidPo) return
+          try {
+            setVoiding(true)
+            const v = await voidForm.validateFields()
+            await purchaseApi.voidPurchaseOrder(companyId, voidPo.id, {
+              voidDate: toLocalDateString(v.voidDate),
+              reason: v.reason || null
+            })
+            message.success('Voided')
+            setVoidOpen(false)
+            setVoidPo(null)
+            voidForm.resetFields()
+            await load(companyId)
+          } catch (e: any) {
+            if (e?.errorFields) return
+            message.error(getApiErrorMessage(e, 'Failed to void purchase order'))
+          } finally {
+            setVoiding(false)
+          }
+        }}
+      >
+        <Form layout="vertical" form={voidForm}>
+          <Form.Item name="voidDate" label="Void Date" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="reason" label="Reason">
+            <Input />
+          </Form.Item>
         </Form>
       </Modal>
     </Space>

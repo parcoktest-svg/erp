@@ -76,7 +76,9 @@ export const masterDataApi = {
   listProductPrices: (priceListVersionId: any) =>
     http.get(`/api/masterdata/price-list-versions/${priceListVersionId}/product-prices`).then((r) => r.data),
   upsertProductPrice: (priceListVersionId: any, payload: any) =>
-    http.post(`/api/masterdata/price-list-versions/${priceListVersionId}/product-prices`, payload).then((r) => r.data)
+    http.post(`/api/masterdata/price-list-versions/${priceListVersionId}/product-prices`, payload).then((r) => r.data),
+
+  listTaxRates: (companyId: any) => http.get(`/api/masterdata/companies/${companyId}/tax-rates`).then((r) => r.data)
 }
 
 export const salesApi = {
@@ -87,7 +89,18 @@ export const salesApi = {
   deleteSalesOrder: (companyId: any, salesOrderId: any) =>
     http.delete(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}`).then((r) => r.data),
   getSalesOrder: (companyId: any, salesOrderId: any) =>
-    http.get(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}`).then((r) => r.data)
+    http.get(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}`).then((r) => r.data),
+
+  approveSalesOrder: (companyId: any, salesOrderId: any) =>
+    http.post(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/approve`).then((r) => r.data),
+  voidSalesOrder: (companyId: any, salesOrderId: any, payload: any) =>
+    http.post(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/void`, payload).then((r) => r.data),
+
+  createInvoiceFromSalesOrder: (companyId: any, salesOrderId: any, payload: any) =>
+    http.post(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/invoices`, payload).then((r) => r.data),
+
+  createGoodsShipment: (companyId: any, salesOrderId: any, payload: any) =>
+    http.post(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/goods-shipments`, payload).then((r) => r.data)
 }
 
 export const purchaseApi = {
@@ -111,7 +124,7 @@ export const inventoryApi = {
   getOnHandByLocator: (companyId: any, params: any) =>
     http.get(`/api/inventory/companies/${companyId}/onhand/by-locator`, { params }).then((r) => r.data),
 
-  listMovements: (companyId: any) => http.get(`/api/inventory/companies/${companyId}/movements`).then((r) => r.data),
+  listMovements: (companyId: any, params?: any) => http.get(`/api/inventory/companies/${companyId}/movements`, { params }).then((r) => r.data),
   createMovement: (companyId: any, payload: any) => http.post(`/api/inventory/companies/${companyId}/movements`, payload).then((r) => r.data),
 
   listAdjustments: (companyId: any) => http.get(`/api/inventory/companies/${companyId}/adjustments`).then((r) => r.data),
@@ -176,7 +189,44 @@ export const financeApi = {
   profitLossReport: (companyId: any, params: any) =>
     http.get(`/api/finance/companies/${companyId}/reports/profit-loss`, { params }).then((r) => r.data),
   balanceSheetReport: (companyId: any, params: any) =>
-    http.get(`/api/finance/companies/${companyId}/reports/balance-sheet`, { params }).then((r) => r.data)
+    http.get(`/api/finance/companies/${companyId}/reports/balance-sheet`, { params }).then((r) => r.data),
+
+  listInvoices: (companyId: any) => http.get(`/api/finance/companies/${companyId}/invoices`).then((r) => r.data),
+  createInvoice: (companyId: any, payload: any) => http.post(`/api/finance/companies/${companyId}/invoices`, payload).then((r) => r.data),
+  voidInvoice: (companyId: any, invoiceId: any, payload: any) =>
+    http.post(`/api/finance/companies/${companyId}/invoices/${invoiceId}/void`, payload).then((r) => r.data),
+
+  listPayments: (companyId: any, params?: any) => http.get(`/api/finance/companies/${companyId}/payments`, { params }).then((r) => r.data),
+  createPayment: (companyId: any, payload: any) => http.post(`/api/finance/companies/${companyId}/payments`, payload).then((r) => r.data),
+  voidPayment: (companyId: any, paymentId: any, payload: any) =>
+    http.post(`/api/finance/companies/${companyId}/payments/${paymentId}/void`, payload).then((r) => r.data),
+
+  createPaymentAllocation: (companyId: any, payload: any) =>
+    http.post(`/api/finance/companies/${companyId}/payment-allocations`, payload).then((r) => r.data),
+  listPaymentAllocations: (companyId: any, params?: any) =>
+    http.get(`/api/finance/companies/${companyId}/payment-allocations`, { params }).then((r) => r.data),
+
+  listBankAccounts: (companyId: any) => http.get(`/api/finance/companies/${companyId}/banks/accounts`).then((r) => r.data),
+  createBankAccount: (companyId: any, payload: any) => http.post(`/api/finance/companies/${companyId}/banks/accounts`, payload).then((r) => r.data),
+  listBankStatements: (companyId: any) => http.get(`/api/finance/companies/${companyId}/banks/statements`).then((r) => r.data),
+  getBankStatement: (companyId: any, statementId: any) =>
+    http.get(`/api/finance/companies/${companyId}/banks/statements/${statementId}`).then((r) => r.data),
+  createBankStatement: (companyId: any, payload: any) => http.post(`/api/finance/companies/${companyId}/banks/statements`, payload).then((r) => r.data),
+  reconcileBankStatementLine: (companyId: any, statementId: any, lineId: any, payload?: any) =>
+    http.post(`/api/finance/companies/${companyId}/banks/statements/${statementId}/lines/${lineId}/reconcile`, payload).then((r) => r.data),
+  suggestPaymentsForBankStatementLine: (companyId: any, statementId: any, lineId: any, params?: any) =>
+    http.get(`/api/finance/companies/${companyId}/banks/statements/${statementId}/lines/${lineId}/suggest-payments`, { params }).then((r) => r.data),
+
+  listBudgets: (companyId: any) => http.get(`/api/finance/companies/${companyId}/budgets`).then((r) => r.data),
+  listBudgetsByFiscalYear: (companyId: any, fiscalYearId: any) =>
+    http.get(`/api/finance/companies/${companyId}/budgets/fiscal-year/${fiscalYearId}`).then((r) => r.data),
+  createBudget: (companyId: any, payload: any) => http.post(`/api/finance/companies/${companyId}/budgets`, payload).then((r) => r.data),
+  completeBudget: (companyId: any, budgetId: any) => http.post(`/api/finance/companies/${companyId}/budgets/${budgetId}/complete`).then((r) => r.data),
+  voidBudget: (companyId: any, budgetId: any) => http.post(`/api/finance/companies/${companyId}/budgets/${budgetId}/void`).then((r) => r.data),
+  budgetVsActual: (companyId: any, budgetId: any) =>
+    http.get(`/api/finance/companies/${companyId}/budgets/${budgetId}/budget-vs-actual`).then((r) => r.data),
+
+  listJournals: (companyId: any) => http.get(`/api/finance/companies/${companyId}/journals`).then((r) => r.data)
 }
 
 export const hrApi = {

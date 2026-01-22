@@ -37,6 +37,7 @@ import com.erp.sales.model.SalesOrderType;
 import com.erp.sales.repository.SalesOrderRepository;
 import com.erp.sales.request.CreateSalesOrderRequest;
 import com.erp.sales.request.UpdateSalesOrderRequest;
+import com.erp.sales.request.VoidSalesOrderRequest;
 
 @Service
 public class SalesOrderService {
@@ -388,5 +389,53 @@ public class SalesOrderService {
             throw new IllegalArgumentException("Only DRAFTED Sales Order can be deleted");
         }
         salesOrderRepository.delete(so);
+    }
+
+    @Transactional
+    public SalesOrder approve(Long companyId, Long salesOrderId) {
+        SalesOrder so = salesOrderRepository.findById(salesOrderId)
+                .orElseThrow(() -> new IllegalArgumentException("Sales Order not found"));
+        if (so.getCompany() == null || so.getCompany().getId() == null || !so.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Sales Order company mismatch");
+        }
+        if (so.getStatus() != DocumentStatus.DRAFTED) {
+            throw new IllegalArgumentException("Only DRAFTED Sales Order can be approved");
+        }
+        if (so.getLines() == null || so.getLines().isEmpty()) {
+            throw new IllegalArgumentException("Sales Order lines must not be empty");
+        }
+        so.setStatus(DocumentStatus.APPROVED);
+        return salesOrderRepository.save(so);
+    }
+
+    @Transactional
+    public SalesOrder voidOrder(Long companyId, Long salesOrderId, VoidSalesOrderRequest request) {
+        SalesOrder so = salesOrderRepository.findById(salesOrderId)
+                .orElseThrow(() -> new IllegalArgumentException("Sales Order not found"));
+        if (so.getCompany() == null || so.getCompany().getId() == null || !so.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Sales Order company mismatch");
+        }
+        if (so.getStatus() == DocumentStatus.VOIDED) {
+            throw new IllegalArgumentException("Sales Order is already voided");
+        }
+        if (so.getStatus() == DocumentStatus.COMPLETED || so.getStatus() == DocumentStatus.PARTIALLY_COMPLETED) {
+            throw new IllegalArgumentException("Completed Sales Order cannot be voided");
+        }
+        boolean anyShipped = false;
+        if (so.getLines() != null) {
+            for (SalesOrderLine l : so.getLines()) {
+                if (l.getShippedQty() != null && l.getShippedQty().compareTo(BigDecimal.ZERO) > 0) {
+                    anyShipped = true;
+                    break;
+                }
+            }
+        }
+        if (anyShipped) {
+            throw new IllegalArgumentException("Sales Order with shipped qty cannot be voided");
+        }
+
+        // request fields (voidDate/reason) are accepted for future audit usage.
+        so.setStatus(DocumentStatus.VOIDED);
+        return salesOrderRepository.save(so);
     }
 }

@@ -33,7 +33,7 @@ export default function AppLayout() {
         item('Warehouses', '/modules/masterdata/warehouses')
       ]),
       item('Purchase', 'purchase', [item('Purchase Orders', '/modules/purchase/purchase-orders')]),
-      item('Sales', 'sales', [item('Sales Orders', '/modules/sales/sales-orders')]),
+      item('Sales', 'sales', [item('Sales Orders', '/modules/sales/sales-orders'), item('Goods Shipments', '/modules/sales/goods-shipments')]),
       item('Inventory', 'inventory', [
         item('Locators', '/modules/inventory/locators'),
         item('On Hand', '/modules/inventory/onhand'),
@@ -49,6 +49,11 @@ export default function AppLayout() {
       item('Finance', 'finance', [
         item('Overview', '/modules/finance'),
         item('GL Accounts', '/modules/finance/gl-accounts'),
+        item('Invoices', '/modules/finance/invoices'),
+        item('Payments', '/modules/finance/payments'),
+        item('Banks', '/modules/finance/banks'),
+        item('Budgets', '/modules/finance/budgets'),
+        item('Journals', '/modules/finance/journals'),
         item('Periods', '/modules/finance/periods'),
         item('Reports', '/modules/finance/reports')
       ]),

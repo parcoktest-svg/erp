@@ -168,6 +168,10 @@ public class OrderFulfillmentService {
             throw new IllegalArgumentException("Sales order company mismatch");
         }
 
+        if (so.getStatus() != DocumentStatus.APPROVED && so.getStatus() != DocumentStatus.PARTIALLY_COMPLETED) {
+            throw new IllegalArgumentException("Sales Order must be APPROVED before Goods Shipment");
+        }
+
         CreateInventoryMovementRequest moveReq = new CreateInventoryMovementRequest();
         moveReq.setMovementType(InventoryMovementType.OUT);
         moveReq.setMovementDate(request.getMovementDate());
@@ -202,7 +206,7 @@ public class OrderFulfillmentService {
                 .toList();
         moveReq.setLines(lines);
 
-        com.erp.inventory.entity.InventoryMovement movement = inventoryService.createMovement(companyId, moveReq);
+        com.erp.inventory.entity.InventoryMovement movement = inventoryService.createMovement(companyId, moveReq, so.getId());
         updateSalesOrderStatus(so);
         salesOrderRepository.save(so);
         return movement;

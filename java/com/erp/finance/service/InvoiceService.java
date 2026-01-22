@@ -104,6 +104,7 @@ public class InvoiceService {
         invoice.setTaxRate(taxRate);
         invoice.setInvoiceDate(request.getInvoiceDate());
         invoice.setDocumentNo(documentNoService.nextDocumentNo(companyId, DocumentType.INVOICE));
+        invoice.setSalesOrderId(request.getSalesOrderId());
 
         List<InvoiceLine> lines = new ArrayList<>();
         BigDecimal totalNet = BigDecimal.ZERO;

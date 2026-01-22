@@ -77,6 +77,9 @@ public class Invoice extends BaseEntity {
     @Column(nullable = false)
     private BigDecimal openAmount = BigDecimal.ZERO;
 
+    @Column(name = "sales_order_id")
+    private Long salesOrderId;
+
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InvoiceLine> lines = new ArrayList<>();
 
@@ -193,6 +196,14 @@ public class Invoice extends BaseEntity {
 
     public void setOpenAmount(BigDecimal openAmount) {
         this.openAmount = openAmount;
+    }
+
+    public Long getSalesOrderId() {
+        return salesOrderId;
+    }
+
+    public void setSalesOrderId(Long salesOrderId) {
+        this.salesOrderId = salesOrderId;
     }
 
     public List<InvoiceLine> getLines() {

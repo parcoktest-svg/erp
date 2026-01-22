@@ -17,7 +17,7 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
-import { coreApi, hrApi, masterDataApi, salesApi } from '@/utils/api'
+import { coreApi, hrApi, inventoryApi, masterDataApi, salesApi } from '@/utils/api'
 import { useContextStore } from '@/stores/context'
 import { getApiErrorMessage } from '@/utils/error'
 
@@ -37,6 +37,8 @@ type SalesOrderRow = {
   lines?: any[]
   deliverySchedules?: any[]
 }
+
+type LocatorRow = { id: number; code?: string; name?: string }
 
 function toLocalDateString(d: any): string | null {
   if (!d) return null
@@ -64,11 +66,23 @@ export default function SalesOrdersView() {
   const [products, setProducts] = useState<any[]>([])
   const [priceListVersions, setPriceListVersions] = useState<any[]>([])
   const [currencies, setCurrencies] = useState<any[]>([])
+  const [taxRates, setTaxRates] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [warehouses, setWarehouses] = useState<any[]>([])
+  const [locators, setLocators] = useState<LocatorRow[]>([])
 
   const [form] = Form.useForm()
+
+  const [shipOpen, setShipOpen] = useState(false)
+  const [shipSaving, setShipSaving] = useState(false)
+  const [shipSoId, setShipSoId] = useState<number | null>(null)
+  const [shipForm] = Form.useForm()
+
+  const [voidOpen, setVoidOpen] = useState(false)
+  const [voidSaving, setVoidSaving] = useState(false)
+  const [voidSoId, setVoidSoId] = useState<number | null>(null)
+  const [voidForm] = Form.useForm()
 
   const loadCompanies = async () => {
     setCompanyLoading(true)
@@ -88,24 +102,28 @@ export default function SalesOrdersView() {
   const loadLookups = async (cid: number) => {
     setOrgLoading(true)
     try {
-      const [orgRes, bps, prods, pls, curs, depts, emps, whs] = await Promise.all([
+      const [orgRes, bps, prods, pls, curs, taxs, depts, emps, whs, locs] = await Promise.all([
         coreApi.listOrgs(cid),
         masterDataApi.listBusinessPartners(cid),
         masterDataApi.listProducts(cid),
         masterDataApi.listPriceLists(cid),
         masterDataApi.listCurrencies(cid),
+        masterDataApi.listTaxRates(cid),
         hrApi.listDepartments(),
         hrApi.listEmployees(),
-        masterDataApi.listWarehouses(cid)
+        masterDataApi.listWarehouses(cid),
+        inventoryApi.listLocators(cid)
       ])
 
       setOrgs((orgRes || []) as OrgRow[])
       setCustomers((bps || []).filter((x: any) => x.type === 'CUSTOMER' || x.type === 'BOTH'))
       setProducts(prods || [])
       setCurrencies(curs || [])
+      setTaxRates(taxs || [])
       setDepartments(depts || [])
       setEmployees(emps || [])
       setWarehouses(whs || [])
+      setLocators((locs || []) as LocatorRow[])
 
       const plArr = pls || []
       const versionLists = await Promise.all(plArr.map((pl: any) => masterDataApi.listPriceListVersions(pl.id)))
@@ -118,9 +136,11 @@ export default function SalesOrdersView() {
       setProducts([])
       setPriceListVersions([])
       setCurrencies([])
+      setTaxRates([])
       setDepartments([])
       setEmployees([])
       setWarehouses([])
+      setLocators([])
     } finally {
       setOrgLoading(false)
     }
@@ -198,6 +218,15 @@ export default function SalesOrdersView() {
     [warehouses]
   )
 
+  const locatorOptions = useMemo(
+    () =>
+      (locators || []).map((l: any) => ({
+        label: `${l.code || ''} ${l.name || ''}`.trim() || String(l.id),
+        value: l.id
+      })),
+    [locators]
+  )
+
   const currencyOptions = useMemo(
     () => (currencies || []).map((c: any) => ({ label: `${c.code} - ${c.name}`, value: c.id })),
     [currencies]
@@ -205,6 +234,20 @@ export default function SalesOrdersView() {
 
   function canEditRow(r: SalesOrderRow) {
     return (r.status || '') === 'DRAFTED'
+  }
+
+  function canApproveRow(r: SalesOrderRow) {
+    return (r.status || '') === 'DRAFTED'
+  }
+
+  function canVoidRow(r: SalesOrderRow) {
+    const s = String(r.status || '')
+    return s === 'DRAFTED' || s === 'APPROVED'
+  }
+
+  function canShipRow(r: SalesOrderRow) {
+    const s = String(r.status || '')
+    return s === 'APPROVED' || s === 'PARTIALLY_COMPLETED'
   }
 
   const columns: ColumnsType<SalesOrderRow> = [
@@ -229,11 +272,47 @@ export default function SalesOrdersView() {
     {
       title: 'Action',
       key: 'action',
-      width: 240,
+      width: 520,
       render: (_, r) => (
         <Space>
           <Button size="small" disabled={!canEditRow(r)} onClick={() => void openEdit(r)}>
             Edit
+          </Button>
+          <Popconfirm
+            title="Approve sales order?"
+            okText="Approve"
+            cancelText="Cancel"
+            onConfirm={async () => {
+              if (!companyId) return
+              try {
+                await salesApi.approveSalesOrder(companyId, r.id)
+                message.success('Approved')
+                await load(companyId)
+              } catch (e: any) {
+                message.error(getApiErrorMessage(e, 'Failed to approve'))
+              }
+            }}
+            disabled={!canApproveRow(r)}
+          >
+            <Button size="small" type="primary" disabled={!canApproveRow(r)}>
+              Approve
+            </Button>
+          </Popconfirm>
+          <Button size="small" disabled={!canShipRow(r)} onClick={() => void openShip(r)}>
+            Ship
+          </Button>
+          <Button
+            size="small"
+            danger
+            disabled={!canVoidRow(r)}
+            onClick={() => {
+              setVoidSoId(r.id)
+              voidForm.resetFields()
+              voidForm.setFieldsValue({ voidDate: dayjs(), reason: '' })
+              setVoidOpen(true)
+            }}
+          >
+            Void
           </Button>
           <Popconfirm
             title="Delete sales order?"
@@ -250,6 +329,46 @@ export default function SalesOrdersView() {
       )
     }
   ]
+
+  async function openShip(row: SalesOrderRow) {
+    if (!companyId) return
+    if (!row?.id) return
+    setShipSaving(true)
+    try {
+      const detail = await salesApi.getSalesOrder(companyId, row.id)
+      const lines = Array.isArray(detail?.lines) ? detail.lines : []
+
+      const shipLines = lines
+        .map((l: any) => {
+          const qty = Number(l?.qty ?? 0)
+          const shipped = Number(l?.shippedQty ?? 0)
+          const remaining = Math.max(0, qty - shipped)
+          return {
+            salesOrderLineId: l?.id,
+            productId: l?.productId,
+            orderedQty: qty,
+            shippedQty: shipped,
+            remainingQty: remaining,
+            qty: remaining > 0 ? remaining : 0
+          }
+        })
+        .filter((x: any) => x.salesOrderLineId != null && Number(x.remainingQty) > 0)
+
+      setShipSoId(detail?.id ?? row.id)
+      shipForm.resetFields()
+      shipForm.setFieldsValue({
+        fromLocatorId: locators[0]?.id ?? null,
+        movementDate: dayjs(),
+        description: `Goods Shipment for SO ${detail?.documentNo || row.documentNo || row.id}`,
+        lines: shipLines
+      })
+      setShipOpen(true)
+    } catch (e: any) {
+      message.error(getApiErrorMessage(e, 'Failed to load sales order detail'))
+    } finally {
+      setShipSaving(false)
+    }
+  }
 
   async function openCreate() {
     setEditId(null)
@@ -732,6 +851,183 @@ export default function SalesOrdersView() {
               </Form.List>
             </>
           ) : null}
+        </Form>
+      </Modal>
+
+      <Modal
+        open={shipOpen}
+        title="Create Goods Shipment"
+        width={1100}
+        onCancel={() => {
+          setShipOpen(false)
+          setShipSoId(null)
+        }}
+        onOk={async () => {
+          if (!companyId) return
+          if (!shipSoId) {
+            message.error('Sales order is missing')
+            return
+          }
+          try {
+            setShipSaving(true)
+            const v = await shipForm.validateFields()
+            const payload: any = {
+              fromLocatorId: v.fromLocatorId != null ? Number(v.fromLocatorId) : null,
+              movementDate: v.movementDate ? dayjs(v.movementDate).format('YYYY-MM-DD') : null,
+              description: v.description || null,
+              lines: (v.lines || [])
+                .map((ln: any) => ({
+                  salesOrderLineId: ln.salesOrderLineId != null ? Number(ln.salesOrderLineId) : null,
+                  qty: ln.qty != null ? Number(ln.qty) : null,
+                  remainingQty: ln.remainingQty != null ? Number(ln.remainingQty) : null
+                }))
+                .filter((ln: any) => ln.salesOrderLineId != null && ln.qty != null && ln.qty > 0)
+            }
+
+            for (const ln of payload.lines) {
+              if (ln.remainingQty != null && ln.qty > ln.remainingQty) {
+                message.error('Shipment qty exceeds remaining qty')
+                return
+              }
+            }
+
+            payload.lines = payload.lines.map(({ remainingQty, ...rest }: any) => rest)
+
+            const movement = await salesApi.createGoodsShipment(companyId, shipSoId, payload)
+            message.success(`Created Goods Shipment ${movement?.documentNo || ''}`.trim())
+            setShipOpen(false)
+            setShipSoId(null)
+            await load(companyId)
+          } catch (e: any) {
+            if (e?.errorFields) {
+              message.error('Please complete required fields')
+              return
+            }
+            message.error(getApiErrorMessage(e, 'Failed to create goods shipment'))
+          } finally {
+            setShipSaving(false)
+          }
+        }}
+        okButtonProps={{ loading: shipSaving }}
+        destroyOnClose
+      >
+        <Form layout="vertical" form={shipForm}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Form.Item label="From Locator" name="fromLocatorId" rules={[{ required: true }]}>
+              <Select showSearch options={locatorOptions} optionFilterProp="label" placeholder="Select locator" />
+            </Form.Item>
+            <Form.Item label="Movement Date" name="movementDate" rules={[{ required: true }]}>
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </div>
+          <Form.Item label="Description" name="description">
+            <Input />
+          </Form.Item>
+
+          <Typography.Title level={5}>Lines</Typography.Title>
+          <Form.List name="lines">
+            {(fields) => (
+              <Table
+                size="small"
+                rowKey={(row: any) => String(row?.salesOrderLineId)}
+                pagination={false}
+                dataSource={fields.map((f) => ({ ...shipForm.getFieldValue('lines')?.[f.name], _idx: f.name }))}
+                columns={[
+                  { title: 'SO Line ID', dataIndex: 'salesOrderLineId', width: 120 },
+                  { title: 'Product', dataIndex: 'productId', width: 120 },
+                  { title: 'Ordered', dataIndex: 'orderedQty', width: 120 },
+                  { title: 'Shipped', dataIndex: 'shippedQty', width: 120 },
+                  { title: 'Remaining', dataIndex: 'remainingQty', width: 120 },
+                  {
+                    title: 'Ship Qty',
+                    key: 'qty',
+                    width: 200,
+                    render: (_: any, r: any) => (
+                      <Form.Item
+                        name={[r._idx, 'qty']}
+                        style={{ marginBottom: 0 }}
+                        rules={[{ required: true }]}
+                      >
+                        <InputNumber style={{ width: '100%' }} min={0} max={Number(r.remainingQty ?? 0)} />
+                      </Form.Item>
+                    )
+                  },
+                  {
+                    title: '',
+                    key: 'hidden',
+                    width: 1,
+                    render: (_: any, r: any) => (
+                      <>
+                        <Form.Item name={[r._idx, 'salesOrderLineId']} style={{ display: 'none' }}>
+                          <Input />
+                        </Form.Item>
+                        <Form.Item name={[r._idx, 'productId']} style={{ display: 'none' }}>
+                          <Input />
+                        </Form.Item>
+                        <Form.Item name={[r._idx, 'orderedQty']} style={{ display: 'none' }}>
+                          <Input />
+                        </Form.Item>
+                        <Form.Item name={[r._idx, 'shippedQty']} style={{ display: 'none' }}>
+                          <Input />
+                        </Form.Item>
+                        <Form.Item name={[r._idx, 'remainingQty']} style={{ display: 'none' }}>
+                          <Input />
+                        </Form.Item>
+                      </>
+                    )
+                  }
+                ]}
+              />
+            )}
+          </Form.List>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={voidOpen}
+        title="Void Sales Order"
+        okText="Void"
+        okButtonProps={{ danger: true, loading: voidSaving }}
+        onCancel={() => {
+          setVoidOpen(false)
+          setVoidSoId(null)
+        }}
+        onOk={async () => {
+          if (!companyId) return
+          if (!voidSoId) {
+            message.error('Sales order is missing')
+            return
+          }
+          try {
+            setVoidSaving(true)
+            const v = await voidForm.validateFields()
+            await salesApi.voidSalesOrder(companyId, voidSoId, {
+              voidDate: v.voidDate ? dayjs(v.voidDate).format('YYYY-MM-DD') : null,
+              reason: v.reason || null
+            })
+            message.success('Voided')
+            setVoidOpen(false)
+            setVoidSoId(null)
+            await load(companyId)
+          } catch (e: any) {
+            if (e?.errorFields) {
+              message.error('Please complete required fields')
+              return
+            }
+            message.error(getApiErrorMessage(e, 'Failed to void'))
+          } finally {
+            setVoidSaving(false)
+          }
+        }}
+        destroyOnClose
+      >
+        <Form layout="vertical" form={voidForm}>
+          <Form.Item name="voidDate" label="Void Date" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="reason" label="Reason">
+            <Input />
+          </Form.Item>
         </Form>
       </Modal>
     </Space>

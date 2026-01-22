@@ -2,6 +2,7 @@ package com.erp.inventory.service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -98,6 +99,39 @@ public class InventoryService {
         return inventoryMovementRepository.findByCompanyId(companyId);
     }
 
+    public List<InventoryMovement> listMovements(Long companyId, InventoryMovementType movementType, String q, Long salesOrderId) {
+        List<InventoryMovement> base = inventoryMovementRepository.findByCompanyId(companyId);
+        if ((movementType == null) && (salesOrderId == null) && (q == null || q.isBlank())) {
+            return base;
+        }
+
+        final String qq = (q == null) ? null : q.trim().toLowerCase(Locale.ROOT);
+        List<InventoryMovement> out = new ArrayList<>();
+        for (InventoryMovement m : base) {
+            if (movementType != null) {
+                if (m == null || m.getMovementType() == null || !m.getMovementType().equals(movementType)) {
+                    continue;
+                }
+            }
+            if (salesOrderId != null) {
+                if (m == null || m.getSalesOrderId() == null || !m.getSalesOrderId().equals(salesOrderId)) {
+                    continue;
+                }
+            }
+            if (qq != null && !qq.isBlank()) {
+                String dn = m != null && m.getDocumentNo() != null ? m.getDocumentNo() : "";
+                String desc = m != null && m.getDescription() != null ? m.getDescription() : "";
+                String dt = m != null && m.getMovementDate() != null ? String.valueOf(m.getMovementDate()) : "";
+                String hay = (dn + " " + desc + " " + dt).toLowerCase(Locale.ROOT);
+                if (!hay.contains(qq)) {
+                    continue;
+                }
+            }
+            out.add(m);
+        }
+        return out;
+    }
+
     public BigDecimal getOnHandQty(Long locatorId, Long productId) {
         return stockTransactionRepository.sumQtyByLocatorAndProduct(locatorId, productId);
     }
@@ -115,6 +149,11 @@ public class InventoryService {
 
     @Transactional
     public InventoryMovement createMovement(Long companyId, CreateInventoryMovementRequest request) {
+        return createMovement(companyId, request, null);
+    }
+
+    @Transactional
+    public InventoryMovement createMovement(Long companyId, CreateInventoryMovementRequest request, Long salesOrderId) {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("Company not found"));
 
@@ -123,6 +162,7 @@ public class InventoryService {
         movement.setMovementType(request.getMovementType());
         movement.setMovementDate(request.getMovementDate());
         movement.setDescription(request.getDescription());
+        movement.setSalesOrderId(salesOrderId);
         movement.setDocumentNo(documentNoService.nextDocumentNo(companyId, DocumentType.INVENTORY_MOVEMENT));
 
         List<InventoryMovementLine> lines = new ArrayList<>();

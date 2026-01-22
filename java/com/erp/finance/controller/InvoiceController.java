@@ -73,6 +73,7 @@ public class InvoiceController {
         dto.setGrandTotal(invoice.getGrandTotal());
         dto.setPaidAmount(invoice.getPaidAmount());
         dto.setOpenAmount(invoice.getOpenAmount());
+        dto.setSalesOrderId(invoice.getSalesOrderId());
         dto.setLines(invoice.getLines() != null ? invoice.getLines().stream().map(this::toLineDto).toList() : List.of());
         dto.setTaxLines(invoice.getTaxLines() != null ? invoice.getTaxLines().stream().map(this::toTaxLineDto).toList() : List.of());
         return dto;

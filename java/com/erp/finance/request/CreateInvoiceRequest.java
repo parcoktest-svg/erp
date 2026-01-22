@@ -23,6 +23,8 @@ public class CreateInvoiceRequest {
     @NotNull
     private LocalDate invoiceDate;
 
+    private Long salesOrderId;
+
     @Valid
     @NotNull
     private List<CreateInvoiceLineRequest> lines;
@@ -65,6 +67,14 @@ public class CreateInvoiceRequest {
 
     public void setInvoiceDate(LocalDate invoiceDate) {
         this.invoiceDate = invoiceDate;
+    }
+
+    public Long getSalesOrderId() {
+        return salesOrderId;
+    }
+
+    public void setSalesOrderId(Long salesOrderId) {
+        this.salesOrderId = salesOrderId;
     }
 
     public List<CreateInvoiceLineRequest> getLines() {

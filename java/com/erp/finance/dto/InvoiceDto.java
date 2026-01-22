@@ -23,6 +23,7 @@ public class InvoiceDto {
     private BigDecimal grandTotal;
     private BigDecimal paidAmount;
     private BigDecimal openAmount;
+    private Long salesOrderId;
     private List<InvoiceLineDto> lines;
     private List<InvoiceTaxLineDto> taxLines;
 
@@ -136,6 +137,14 @@ public class InvoiceDto {
 
     public void setOpenAmount(BigDecimal openAmount) {
         this.openAmount = openAmount;
+    }
+
+    public Long getSalesOrderId() {
+        return salesOrderId;
+    }
+
+    public void setSalesOrderId(Long salesOrderId) {
+        this.salesOrderId = salesOrderId;
     }
 
     public List<InvoiceLineDto> getLines() {

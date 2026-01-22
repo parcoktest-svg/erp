@@ -19,6 +19,7 @@ import WarehousesView from '@/views/modules/masterdata/WarehousesView'
 
 import PurchaseOrdersView from '@/views/modules/purchase/PurchaseOrdersView'
 import SalesOrdersView from '@/views/modules/sales/SalesOrdersView'
+import GoodsShipmentsView from '@/views/modules/sales/GoodsShipmentsView'
 
 import LocatorsView from '@/views/modules/inventory/LocatorsView'
 import OnHandView from '@/views/modules/inventory/OnHandView'
@@ -34,6 +35,11 @@ import FinanceOverviewView from '@/views/modules/finance/FinanceOverviewView'
 import GlAccountsView from '@/views/modules/finance/GlAccountsView'
 import FinancePeriodsView from '@/views/modules/finance/FinancePeriodsView'
 import FinanceReportsView from '@/views/modules/finance/FinanceReportsView'
+import FinanceInvoicesView from '@/views/modules/finance/FinanceInvoicesView'
+import FinancePaymentsView from '@/views/modules/finance/FinancePaymentsView'
+import FinanceBanksView from '@/views/modules/finance/FinanceBanksView'
+import FinanceBudgetsView from '@/views/modules/finance/FinanceBudgetsView'
+import FinanceJournalsView from '@/views/modules/finance/FinanceJournalsView'
 
 import HrOverviewView from '@/views/modules/hr/HrOverviewView'
 import HrDepartmentsView from '@/views/modules/hr/DepartmentsView'
@@ -91,6 +97,7 @@ export default function AppRoutes() {
 
           <Route path="/modules/purchase/purchase-orders" element={<PurchaseOrdersView />} />
           <Route path="/modules/sales/sales-orders" element={<SalesOrdersView />} />
+          <Route path="/modules/sales/goods-shipments" element={<GoodsShipmentsView />} />
 
           <Route path="/modules/inventory/locators" element={<LocatorsView />} />
           <Route path="/modules/inventory/onhand" element={<OnHandView />} />
@@ -104,6 +111,12 @@ export default function AppRoutes() {
           <Route path="/modules/finance/gl-accounts" element={<GlAccountsView />} />
           <Route path="/modules/finance/periods" element={<FinancePeriodsView />} />
           <Route path="/modules/finance/reports" element={<FinanceReportsView />} />
+
+          <Route path="/modules/finance/invoices" element={<FinanceInvoicesView />} />
+          <Route path="/modules/finance/payments" element={<FinancePaymentsView />} />
+          <Route path="/modules/finance/banks" element={<FinanceBanksView />} />
+          <Route path="/modules/finance/budgets" element={<FinanceBudgetsView />} />
+          <Route path="/modules/finance/journals" element={<FinanceJournalsView />} />
 
           <Route path="/modules/admin/users" element={<AdminUsersView />} />
 

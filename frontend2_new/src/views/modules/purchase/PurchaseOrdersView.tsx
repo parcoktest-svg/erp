@@ -46,6 +46,8 @@ type ProductRow = {
   name?: string
 }
 
+type TaxRateRow = { id: number; name?: string; rate?: any }
+
 type PriceListRow = {
   id: number
   name?: string
@@ -65,6 +67,7 @@ type PurchaseOrderLineRow = {
   price?: number
   lineNet?: number
   receivedQty?: number
+  invoicedQty?: number
 }
 
 type PurchaseOrderRow = {
@@ -116,6 +119,8 @@ export default function PurchaseOrdersView() {
   const [productLoading, setProductLoading] = useState(false)
   const [products, setProducts] = useState<ProductRow[]>([])
 
+  const [taxRates, setTaxRates] = useState<TaxRateRow[]>([])
+
   const [priceListVersionLoading, setPriceListVersionLoading] = useState(false)
   const [priceListVersions, setPriceListVersions] = useState<PriceListVersionRow[]>([])
 
@@ -141,6 +146,11 @@ export default function PurchaseOrdersView() {
   const [voiding, setVoiding] = useState(false)
   const [voidForm] = Form.useForm()
 
+  const [billOpen, setBillOpen] = useState(false)
+  const [billPo, setBillPo] = useState<PurchaseOrderRow | null>(null)
+  const [billing, setBilling] = useState(false)
+  const [billForm] = Form.useForm()
+
   const loadCompanies = async () => {
     setCompanyLoading(true)
     try {
@@ -161,11 +171,12 @@ export default function PurchaseOrdersView() {
     setVendorLoading(true)
     setProductLoading(true)
     try {
-      const [orgRes, vendorRes, productRes, priceListRes] = await Promise.all([
+      const [orgRes, vendorRes, productRes, priceListRes, taxRes] = await Promise.all([
         coreApi.listOrgs(cid),
         masterDataApi.listBusinessPartners(cid),
         masterDataApi.listProducts(cid),
-        masterDataApi.listPriceLists(cid)
+        masterDataApi.listPriceLists(cid),
+        masterDataApi.listTaxRates(cid)
       ])
 
       setOrgs((orgRes || []) as OrgRow[])
@@ -175,6 +186,8 @@ export default function PurchaseOrdersView() {
 
       setProducts((productRes || []) as ProductRow[])
       const pls = (priceListRes || []) as PriceListRow[]
+
+      setTaxRates((taxRes || []) as TaxRateRow[])
 
       setPriceListVersionLoading(true)
       try {
@@ -293,6 +306,12 @@ export default function PurchaseOrdersView() {
           const canDelete = status === 'DRAFTED'
           const canGoodsReceipt = status === 'APPROVED' || status === 'PARTIALLY_COMPLETED'
           const canVoid = status === 'DRAFTED' || status === 'APPROVED'
+          const canBill = status !== 'DRAFTED' && status !== 'VOIDED'
+          const hasBillable = (r.lines || []).some((ln) => {
+            const received = Number(ln.receivedQty || 0)
+            const invoiced = Number((ln as any).invoicedQty || 0)
+            return received - invoiced > 0
+          })
 
           return (
             <Space wrap>
@@ -405,12 +424,54 @@ export default function PurchaseOrdersView() {
               >
                 Void
               </Button>
+
+              <Button
+                size="small"
+                disabled={!canBill || !hasBillable}
+                onClick={() => {
+                  setBillPo(r)
+                  setBillOpen(true)
+                  billForm.resetFields()
+
+                  const defaultLines = (r.lines || [])
+                    .filter((ln) => {
+                      const received = Number(ln.receivedQty || 0)
+                      const invoiced = Number((ln as any).invoicedQty || 0)
+                      return received - invoiced > 0
+                    })
+                    .map((ln) => {
+                      const received = Number(ln.receivedQty || 0)
+                      const invoiced = Number((ln as any).invoicedQty || 0)
+                      return {
+                        purchaseOrderLineId: ln.id,
+                        qty: received - invoiced
+                      }
+                    })
+
+                  billForm.setFieldsValue({
+                    invoiceDate: dayjs(),
+                    taxRateId: undefined,
+                    lines: defaultLines
+                  })
+                }}
+              >
+                Create Vendor Bill
+              </Button>
+
+              <Button
+                size="small"
+                onClick={() => {
+                  navigate(`/modules/finance/invoices?purchaseOrderId=${encodeURIComponent(String(r.id))}`)
+                }}
+              >
+                View Invoices
+              </Button>
             </Space>
           )
         }
       }
     ],
-    [companyId, form, orgLabelById, receiptForm, vendorLabelById]
+    [billForm, companyId, form, navigate, orgLabelById, receiptForm, vendorLabelById, voidForm]
   )
 
   return (
@@ -485,6 +546,18 @@ export default function PurchaseOrdersView() {
                   },
                   { title: 'Qty', dataIndex: 'qty', width: 120 },
                   { title: 'Received', dataIndex: 'receivedQty', width: 120 },
+                  { title: 'Invoiced', dataIndex: 'invoicedQty', width: 120 },
+                  {
+                    title: 'Remaining',
+                    key: 'remaining',
+                    width: 120,
+                    render: (_: any, ln: any) => {
+                      const received = Number(ln?.receivedQty || 0)
+                      const invoiced = Number(ln?.invoicedQty || 0)
+                      const remaining = received - invoiced
+                      return remaining <= 0 ? 0 : remaining
+                    }
+                  },
                   { title: 'Price', dataIndex: 'price', width: 120 },
                   { title: 'Line Net', dataIndex: 'lineNet', width: 140 }
                 ]}
@@ -494,6 +567,115 @@ export default function PurchaseOrdersView() {
           }}
         />
       </Card>
+
+      <Modal
+        title={`Create Vendor Bill${billPo?.documentNo ? ` - ${billPo.documentNo}` : ''}`}
+        open={billOpen}
+        okText="Create"
+        confirmLoading={billing}
+        onCancel={() => {
+          setBillOpen(false)
+          setBillPo(null)
+          billForm.resetFields()
+        }}
+        onOk={async () => {
+          if (!companyId || !billPo) return
+          try {
+            setBilling(true)
+            const v = await billForm.validateFields()
+            const payload: any = {
+              invoiceDate: toLocalDateString(v.invoiceDate),
+              taxRateId: v.taxRateId ?? null,
+              lines: (v.lines || []).map((ln: any) => ({
+                purchaseOrderLineId: ln.purchaseOrderLineId,
+                qty: ln.qty
+              }))
+            }
+            if (!payload.taxRateId) delete payload.taxRateId
+
+            await purchaseApi.createPurchaseInvoice(companyId, billPo.id, payload)
+            message.success('Vendor bill created')
+            setBillOpen(false)
+            setBillPo(null)
+            billForm.resetFields()
+            await load(companyId)
+          } catch (e: any) {
+            if (e?.errorFields) return
+            message.error(getApiErrorMessage(e, 'Failed to create vendor bill'))
+          } finally {
+            setBilling(false)
+          }
+        }}
+      >
+        <Form layout="vertical" form={billForm}>
+          <Space wrap style={{ width: '100%' }}>
+            <Form.Item name="invoiceDate" label="Invoice Date" rules={[{ required: true }]} style={{ width: 240 }}>
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="taxRateId" label="Tax Rate (optional)" style={{ width: 360 }}>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                options={(taxRates || []).map((t: any) => ({
+                  value: t.id,
+                  label: `${t.name || t.id}${t.rate != null ? ` (${t.rate}%)` : ''}`
+                }))}
+              />
+            </Form.Item>
+          </Space>
+
+          <Typography.Title level={5}>Invoice Lines</Typography.Title>
+          <Form.List name="lines">
+            {(fields, { remove }) => (
+              <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                {fields.map((field) => {
+                  const polId = billForm.getFieldValue(['lines', field.name, 'purchaseOrderLineId'])
+                  const poLine = billPo?.lines?.find((x) => x.id === polId)
+                  const productId = poLine?.productId
+                  const label = productId ? productLabelById.get(productId) || productId : polId
+
+                  return (
+                    <Space key={field.key} align="baseline" wrap style={{ width: '100%' }}>
+                      <Form.Item
+                        {...field}
+                        name={[field.name, 'purchaseOrderLineId']}
+                        label="PO Line"
+                        rules={[{ required: true }]}
+                        style={{ width: 420 }}
+                      >
+                        <Select
+                          disabled
+                          options={[
+                            {
+                              value: polId,
+                              label
+                            }
+                          ]}
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        {...field}
+                        name={[field.name, 'qty']}
+                        label="Qty"
+                        rules={[{ required: true }]}
+                        style={{ width: 200 }}
+                      >
+                        <InputNumber style={{ width: '100%' }} min={0.0001} />
+                      </Form.Item>
+
+                      <Button danger onClick={() => remove(field.name)}>
+                        Remove
+                      </Button>
+                    </Space>
+                  )
+                })}
+              </Space>
+            )}
+          </Form.List>
+        </Form>
+      </Modal>
 
       <Modal
         title={editing ? 'Edit Purchase Order' : 'Create Purchase Order'}

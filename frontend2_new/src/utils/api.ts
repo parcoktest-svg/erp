@@ -115,7 +115,9 @@ export const purchaseApi = {
   voidPurchaseOrder: (companyId: any, purchaseOrderId: any, payload: any) =>
     http.post(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}/void`, payload).then((r) => r.data),
   createGoodsReceipt: (companyId: any, purchaseOrderId: any, payload: any) =>
-    http.post(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}/goods-receipts`, payload).then((r) => r.data)
+    http.post(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}/goods-receipts`, payload).then((r) => r.data),
+  createPurchaseInvoice: (companyId: any, purchaseOrderId: any, payload: any) =>
+    http.post(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}/invoices`, payload).then((r) => r.data)
 }
 
 export const inventoryApi = {

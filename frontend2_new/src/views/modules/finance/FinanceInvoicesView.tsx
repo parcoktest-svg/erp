@@ -123,11 +123,14 @@ export default function FinanceInvoicesView() {
     try {
       const res = await financeApi.listInvoices(cid)
       const list: InvoiceRow[] = (res || []) as any
+      let filtered = list || []
       if (salesOrderId) {
-        setRows((list || []).filter((x: any) => Number(x?.salesOrderId) === Number(salesOrderId)))
-      } else {
-        setRows(list || [])
+        filtered = filtered.filter((x: any) => Number(x?.salesOrderId) === Number(salesOrderId))
       }
+      if (purchaseOrderId) {
+        filtered = filtered.filter((x: any) => Number(x?.purchaseOrderId) === Number(purchaseOrderId))
+      }
+      setRows(filtered)
     } catch (e: any) {
       message.error(getApiErrorMessage(e, 'Failed to load invoices'))
       setRows([])

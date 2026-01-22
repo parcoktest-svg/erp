@@ -126,6 +126,10 @@ export const inventoryApi = {
 
   listMovements: (companyId: any, params?: any) => http.get(`/api/inventory/companies/${companyId}/movements`, { params }).then((r) => r.data),
   createMovement: (companyId: any, payload: any) => http.post(`/api/inventory/companies/${companyId}/movements`, payload).then((r) => r.data),
+  completeMovement: (companyId: any, movementId: any) =>
+    http.post(`/api/inventory/companies/${companyId}/movements/${movementId}/complete`).then((r) => r.data),
+  voidMovement: (companyId: any, movementId: any) =>
+    http.post(`/api/inventory/companies/${companyId}/movements/${movementId}/void`).then((r) => r.data),
 
   listAdjustments: (companyId: any) => http.get(`/api/inventory/companies/${companyId}/adjustments`).then((r) => r.data),
   createAdjustment: (companyId: any, payload: any) => http.post(`/api/inventory/companies/${companyId}/adjustments`, payload).then((r) => r.data),
@@ -193,6 +197,8 @@ export const financeApi = {
 
   listInvoices: (companyId: any) => http.get(`/api/finance/companies/${companyId}/invoices`).then((r) => r.data),
   createInvoice: (companyId: any, payload: any) => http.post(`/api/finance/companies/${companyId}/invoices`, payload).then((r) => r.data),
+  completeInvoice: (companyId: any, invoiceId: any) =>
+    http.post(`/api/finance/companies/${companyId}/invoices/${invoiceId}/complete`).then((r) => r.data),
   voidInvoice: (companyId: any, invoiceId: any, payload: any) =>
     http.post(`/api/finance/companies/${companyId}/invoices/${invoiceId}/void`, payload).then((r) => r.data),
 

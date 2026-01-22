@@ -48,6 +48,14 @@ public class InvoiceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(saved));
     }
 
+    @PostMapping("/{invoiceId}/complete")
+    public ResponseEntity<InvoiceDto> completeInvoice(
+            @PathVariable Long companyId,
+            @PathVariable Long invoiceId) {
+        Invoice saved = invoiceService.complete(companyId, invoiceId);
+        return ResponseEntity.ok(toDto(saved));
+    }
+
     @PostMapping("/{invoiceId}/void")
     public ResponseEntity<InvoiceDto> voidInvoice(
             @PathVariable Long companyId,

@@ -66,7 +66,7 @@ export default function SalesOrdersView() {
   const [products, setProducts] = useState<any[]>([])
   const [priceListVersions, setPriceListVersions] = useState<any[]>([])
   const [currencies, setCurrencies] = useState<any[]>([])
-  const [taxRates, setTaxRates] = useState<any[]>([])
+  const [, setTaxRates] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [warehouses, setWarehouses] = useState<any[]>([])

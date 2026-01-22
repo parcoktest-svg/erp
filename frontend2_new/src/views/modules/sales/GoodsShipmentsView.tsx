@@ -1,6 +1,7 @@
-import { Button, Card, Input, Select, Space, Table, Tag, Typography, message } from 'antd'
+import { Button, Card, Input, Popconfirm, Select, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { coreApi, inventoryApi, salesApi } from '@/utils/api'
 import { useContextStore } from '@/stores/context'
 import { getApiErrorMessage } from '@/utils/error'
@@ -18,6 +19,10 @@ type MovementRow = {
 }
 
 type SalesOrderRow = { id: number; documentNo?: string; status?: string }
+
+function canCompleteOrVoid(r: MovementRow) {
+  return String(r.status || '') === 'DRAFTED'
+}
 
 function escapeCsv(v: any) {
   const s = String(v ?? '')
@@ -41,6 +46,8 @@ function downloadText(filename: string, text: string, mime: string) {
 export default function GoodsShipmentsView() {
   const companyId = useContextStore((s) => s.companyId)
   const setCompanyId = useContextStore((s) => s.setCompanyId)
+
+  const [searchParams] = useSearchParams()
 
   const [companyLoading, setCompanyLoading] = useState(false)
   const [companies, setCompanies] = useState<CompanyRow[]>([])
@@ -97,11 +104,26 @@ export default function GoodsShipmentsView() {
   }, [])
 
   useEffect(() => {
+    const so = searchParams.get('salesOrderId')
+    if (so) {
+      const n = Number(so)
+      if (Number.isFinite(n)) setSalesOrderId(n)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  useEffect(() => {
     if (!companyId) return
     void loadSalesOrders(companyId)
     void load(companyId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId])
+
+  useEffect(() => {
+    if (!companyId) return
+    void load(companyId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, q, salesOrderId])
 
   const companyOptions = useMemo(
     () => companies.map((c) => ({ value: c.id, label: `${c.code || c.id} - ${c.name || ''}` })),
@@ -138,56 +160,98 @@ export default function GoodsShipmentsView() {
     {
       title: 'Actions',
       key: 'actions',
-      width: 120,
+      width: 280,
       render: (_: any, r) => (
-        <Button
-          size="small"
-          onClick={() => {
-            const w = window.open('', '_blank', 'width=1000,height=700')
-            if (!w) {
-              message.error('Popup blocked')
-              return
-            }
-            const safe = (x: any) => String(x ?? '')
-            const linesHtml = (r.lines || [])
-              .map((ln: any) => {
-                const prod = ln?.product?.code ? `${ln.product.code} - ${ln.product.name || ''}` : safe(ln?.product?.id)
-                const from = ln?.fromLocator?.code ? `${ln.fromLocator.code} - ${ln.fromLocator.name || ''}` : safe(ln?.fromLocator?.id)
-                const to = ln?.toLocator?.code ? `${ln.toLocator.code} - ${ln.toLocator.name || ''}` : safe(ln?.toLocator?.id)
-                return `<tr><td>${prod}</td><td style="text-align:right">${safe(ln?.qty)}</td><td>${from}</td><td>${to}</td></tr>`
-              })
-              .join('')
-            w.document.write(`
-              <html>
-                <head>
-                  <title>Goods Shipment ${safe(r.documentNo)}</title>
-                  <style>
-                    body{font-family:Arial, sans-serif; padding:16px}
-                    h2{margin:0 0 8px 0}
-                    table{width:100%; border-collapse:collapse; margin-top:12px}
-                    th,td{border:1px solid #ddd; padding:8px}
-                    th{background:#f5f5f5; text-align:left}
-                  </style>
-                </head>
-                <body>
-                  <h2>Goods Shipment</h2>
-                  <div><b>Doc No:</b> ${safe(r.documentNo)}</div>
-                  <div><b>Date:</b> ${safe(r.movementDate)}</div>
-                  <div><b>Status:</b> ${safe(r.status)}</div>
-                  <div><b>Description:</b> ${safe(r.description)}</div>
-                  <table>
-                    <thead><tr><th>Product</th><th>Qty</th><th>From</th><th>To</th></tr></thead>
-                    <tbody>${linesHtml}</tbody>
-                  </table>
-                  <script>window.print();</script>
-                </body>
-              </html>
-            `)
-            w.document.close()
-          }}
-        >
-          Print
-        </Button>
+        <Space>
+          <Popconfirm
+            title="Complete this goods shipment?"
+            okText="Complete"
+            cancelText="Cancel"
+            disabled={!companyId || !canCompleteOrVoid(r)}
+            onConfirm={async () => {
+              if (!companyId) return
+              try {
+                await inventoryApi.completeMovement(companyId, r.id)
+                message.success('Completed')
+                await load(companyId)
+              } catch (e: any) {
+                message.error(getApiErrorMessage(e, 'Failed to complete'))
+              }
+            }}
+          >
+            <Button size="small" type="primary" disabled={!companyId || !canCompleteOrVoid(r)}>
+              Complete
+            </Button>
+          </Popconfirm>
+          <Popconfirm
+            title="Void this goods shipment?"
+            okText="Void"
+            cancelText="Cancel"
+            disabled={!companyId || !canCompleteOrVoid(r)}
+            onConfirm={async () => {
+              if (!companyId) return
+              try {
+                await inventoryApi.voidMovement(companyId, r.id)
+                message.success('Voided')
+                await load(companyId)
+              } catch (e: any) {
+                message.error(getApiErrorMessage(e, 'Failed to void'))
+              }
+            }}
+          >
+            <Button size="small" danger disabled={!companyId || !canCompleteOrVoid(r)}>
+              Void
+            </Button>
+          </Popconfirm>
+          <Button
+            size="small"
+            onClick={() => {
+              const w = window.open('', '_blank', 'width=1000,height=700')
+              if (!w) {
+                message.error('Popup blocked')
+                return
+              }
+              const safe = (x: any) => String(x ?? '')
+              const linesHtml = (r.lines || [])
+                .map((ln: any) => {
+                  const prod = ln?.product?.code ? `${ln.product.code} - ${ln.product.name || ''}` : safe(ln?.product?.id)
+                  const from = ln?.fromLocator?.code ? `${ln.fromLocator.code} - ${ln.fromLocator.name || ''}` : safe(ln?.fromLocator?.id)
+                  const to = ln?.toLocator?.code ? `${ln.toLocator.code} - ${ln.toLocator.name || ''}` : safe(ln?.toLocator?.id)
+                  return `<tr><td>${prod}</td><td style="text-align:right">${safe(ln?.qty)}</td><td>${from}</td><td>${to}</td></tr>`
+                })
+                .join('')
+              w.document.write(`
+                <html>
+                  <head>
+                    <title>Goods Shipment ${safe(r.documentNo)}</title>
+                    <style>
+                      body{font-family:Arial, sans-serif; padding:16px}
+                      h2{margin:0 0 8px 0}
+                      table{width:100%; border-collapse:collapse; margin-top:12px}
+                      th,td{border:1px solid #ddd; padding:8px}
+                      th{background:#f5f5f5; text-align:left}
+                    </style>
+                  </head>
+                  <body>
+                    <h2>Goods Shipment</h2>
+                    <div><b>Doc No:</b> ${safe(r.documentNo)}</div>
+                    <div><b>Date:</b> ${safe(r.movementDate)}</div>
+                    <div><b>Status:</b> ${safe(r.status)}</div>
+                    <div><b>Description:</b> ${safe(r.description)}</div>
+                    <table>
+                      <thead><tr><th>Product</th><th>Qty</th><th>From</th><th>To</th></tr></thead>
+                      <tbody>${linesHtml}</tbody>
+                    </table>
+                    <script>window.print();</script>
+                  </body>
+                </html>
+              `)
+              w.document.close()
+            }}
+          >
+            Print
+          </Button>
+        </Space>
       )
     }
   ]

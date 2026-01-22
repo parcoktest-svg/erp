@@ -12,6 +12,7 @@ import com.erp.inventory.entity.StockTransaction;
 public interface StockTransactionRepository extends JpaRepository<StockTransaction, Long> {
     List<StockTransaction> findByCompanyId(Long companyId);
     List<StockTransaction> findByLocatorIdAndProductId(Long locatorId, Long productId);
+    List<StockTransaction> findByCompanyIdAndReferenceDocNo(Long companyId, String referenceDocNo);
 
     @Query("select coalesce(sum(t.qty), 0) from StockTransaction t where t.locator.id = :locatorId and t.product.id = :productId")
     BigDecimal sumQtyByLocatorAndProduct(@Param("locatorId") Long locatorId, @Param("productId") Long productId);

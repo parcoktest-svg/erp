@@ -43,4 +43,16 @@ public class InventoryMovementController {
         InventoryMovement saved = inventoryService.createMovement(companyId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
+
+    @PostMapping("/{movementId}/complete")
+    public ResponseEntity<InventoryMovement> complete(@PathVariable Long companyId, @PathVariable Long movementId) {
+        InventoryMovement updated = inventoryService.completeMovement(companyId, movementId);
+        return ResponseEntity.ok(updated);
+    }
+
+    @PostMapping("/{movementId}/void")
+    public ResponseEntity<InventoryMovement> voidMovement(@PathVariable Long companyId, @PathVariable Long movementId) {
+        InventoryMovement updated = inventoryService.voidMovement(companyId, movementId);
+        return ResponseEntity.ok(updated);
+    }
 }

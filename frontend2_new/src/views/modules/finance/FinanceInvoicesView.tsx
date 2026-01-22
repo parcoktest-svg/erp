@@ -1,12 +1,23 @@
-import { Button, Card, DatePicker, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography, message } from 'antd'
+import { Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { coreApi, financeApi, masterDataApi } from '@/utils/api'
 import { useContextStore } from '@/stores/context'
 import { getApiErrorMessage } from '@/utils/error'
 
 type CompanyRow = { id: number; code?: string; name?: string }
+
+function canCompleteInvoice(r: InvoiceRow) {
+  return String(r.status || '') === 'DRAFTED'
+}
+
+function canVoidInvoice(r: InvoiceRow) {
+  const s = String(r.status || '')
+  const paid = Number(r.paidAmount || 0)
+  return s !== 'VOIDED' && !(Number.isFinite(paid) && paid > 0)
+}
 
 type OrgRow = { id: number; code?: string; name?: string }
 
@@ -22,6 +33,7 @@ type InvoiceRow = {
   id: number
   orgId?: number
   businessPartnerId?: number
+  salesOrderId?: number
   invoiceType?: 'AR' | 'AP'
   taxRateId?: number
   documentNo?: string
@@ -44,6 +56,9 @@ function toLocalDateString(d: any): string {
 export default function FinanceInvoicesView() {
   const companyId = useContextStore((s) => s.companyId)
   const setCompanyId = useContextStore((s) => s.setCompanyId)
+
+  const [searchParams] = useSearchParams()
+  const [salesOrderId, setSalesOrderId] = useState<number | null>(null)
 
   const [companyLoading, setCompanyLoading] = useState(false)
   const [companies, setCompanies] = useState<CompanyRow[]>([])
@@ -107,7 +122,12 @@ export default function FinanceInvoicesView() {
     setLoading(true)
     try {
       const res = await financeApi.listInvoices(cid)
-      setRows(res || [])
+      const list: InvoiceRow[] = (res || []) as any
+      if (salesOrderId) {
+        setRows((list || []).filter((x: any) => Number(x?.salesOrderId) === Number(salesOrderId)))
+      } else {
+        setRows(list || [])
+      }
     } catch (e: any) {
       message.error(getApiErrorMessage(e, 'Failed to load invoices'))
       setRows([])
@@ -122,11 +142,28 @@ export default function FinanceInvoicesView() {
   }, [])
 
   useEffect(() => {
+    const so = searchParams.get('salesOrderId')
+    if (so) {
+      const n = Number(so)
+      if (Number.isFinite(n)) setSalesOrderId(n)
+    } else {
+      setSalesOrderId(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  useEffect(() => {
     if (!companyId) return
     void loadLookups(companyId)
     void load(companyId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId])
+
+  useEffect(() => {
+    if (!companyId) return
+    void load(companyId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, salesOrderId])
 
   const companyOptions = useMemo(
     () => companies.map((c) => ({ value: c.id, label: `${c.code || c.id} - ${c.name || ''}` })),
@@ -160,7 +197,18 @@ export default function FinanceInvoicesView() {
   const columns: ColumnsType<InvoiceRow> = [
     { title: 'Doc No', dataIndex: 'documentNo', width: 170 },
     { title: 'Type', dataIndex: 'invoiceType', width: 90 },
-    { title: 'Status', dataIndex: 'status', width: 120, render: (v: any) => <Tag>{String(v || '')}</Tag> },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      width: 120,
+      render: (v: any) => {
+        const s = String(v || '')
+        if (s === 'DRAFTED') return <Tag color="default">Draft</Tag>
+        if (s === 'COMPLETED') return <Tag color="green">Completed</Tag>
+        if (s === 'VOIDED') return <Tag color="red">Voided</Tag>
+        return <Tag>{s}</Tag>
+      }
+    },
     { title: 'Date', dataIndex: 'invoiceDate', width: 130 },
     { title: 'BP', dataIndex: 'businessPartnerId', width: 120 },
     { title: 'Total', dataIndex: 'grandTotal', width: 140 },
@@ -169,7 +217,7 @@ export default function FinanceInvoicesView() {
     {
       title: 'Actions',
       key: 'actions',
-      width: 220,
+      width: 320,
       render: (_, r) => (
         <Space>
           <Button
@@ -197,8 +245,29 @@ export default function FinanceInvoicesView() {
           >
             Lines
           </Button>
+          <Popconfirm
+            title="Complete this invoice?"
+            okText="Complete"
+            cancelText="Cancel"
+            disabled={!companyId || !canCompleteInvoice(r)}
+            onConfirm={async () => {
+              if (!companyId) return
+              try {
+                await financeApi.completeInvoice(companyId, r.id)
+                message.success('Completed')
+                await load(companyId)
+              } catch (e: any) {
+                message.error(getApiErrorMessage(e, 'Failed to complete invoice'))
+              }
+            }}
+          >
+            <Button size="small" type="primary" disabled={!companyId || !canCompleteInvoice(r)}>
+              Complete
+            </Button>
+          </Popconfirm>
           <Button
             size="small"
+            disabled={!canVoidInvoice(r)}
             onClick={() => {
               setVoidId(r.id)
               voidForm.resetFields()

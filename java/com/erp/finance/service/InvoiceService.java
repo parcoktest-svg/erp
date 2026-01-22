@@ -77,6 +77,15 @@ public class InvoiceService {
         return invoiceRepository.findByCompanyId(companyId);
     }
 
+    private Invoice getInvoice(Long companyId, Long invoiceId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new IllegalArgumentException("Invoice not found"));
+        if (invoice.getCompany() == null || invoice.getCompany().getId() == null || !invoice.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Invoice company mismatch");
+        }
+        return invoice;
+    }
+
     @Transactional
     public Invoice create(Long companyId, CreateInvoiceRequest request) {
         Company company = companyRepository.findById(companyId)
@@ -155,10 +164,28 @@ public class InvoiceService {
         invoice.setGrandTotal(round2(invoice.getTotalNet().add(invoice.getTotalTax())));
         invoice.setPaidAmount(BigDecimal.ZERO);
         invoice.setOpenAmount(invoice.getGrandTotal());
-        invoice.setStatus(DocumentStatus.COMPLETED);
+        invoice.setStatus(DocumentStatus.DRAFTED);
 
-		accountingPeriodService.assertPostingAllowed(companyId, invoice.getInvoiceDate());
+        return invoiceRepository.save(invoice);
+    }
 
+    @Transactional
+    public Invoice complete(Long companyId, Long invoiceId) {
+        Invoice invoice = getInvoice(companyId, invoiceId);
+        if (invoice.getStatus() == DocumentStatus.VOIDED) {
+            throw new IllegalArgumentException("Voided invoice cannot be completed");
+        }
+        if (invoice.getStatus() == DocumentStatus.COMPLETED) {
+            return invoice;
+        }
+        if (invoice.getStatus() != DocumentStatus.DRAFTED) {
+            throw new IllegalArgumentException("Only DRAFTED invoice can be completed");
+        }
+
+        accountingPeriodService.assertPostingAllowed(companyId, invoice.getInvoiceDate());
+
+        Company company = invoice.getCompany();
+        Org org = invoice.getOrg();
         JournalEntry je = journalEntryRepository
                 .findByCompanyIdAndSourceDocumentTypeAndSourceDocumentNo(companyId, DocumentType.INVOICE, invoice.getDocumentNo())
                 .orElseGet(() -> {
@@ -167,6 +194,7 @@ public class InvoiceService {
                     return journalEntryRepository.save(created);
                 });
         invoice.setJournalEntry(je);
+        invoice.setStatus(DocumentStatus.COMPLETED);
 
         return invoiceRepository.save(invoice);
     }

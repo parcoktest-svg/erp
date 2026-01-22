@@ -1,0 +1,2 @@
+ALTER TABLE trx_sales_order
+  MODIFY COLUMN status VARCHAR(32) NOT NULL;

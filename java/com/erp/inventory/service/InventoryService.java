@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.core.entity.Company;
 import com.erp.core.entity.Org;
+import com.erp.core.model.DocumentStatus;
 import com.erp.core.model.DocumentType;
 import com.erp.core.repository.CompanyRepository;
 import com.erp.core.repository.OrgRepository;
@@ -201,13 +202,73 @@ public class InventoryService {
             if (request.getMovementType() == InventoryMovementType.TRANSFER) {
                 assertSufficientOnHand(fromLocator, product, lineReq.getQty());
             }
-
-            // Create stock ledger transactions
-            createStockTransactions(company, movement.getDocumentNo(), product, lineReq.getQty(), fromLocator, toLocator, request.getMovementType());
         }
 
         movement.setLines(lines);
         return inventoryMovementRepository.save(movement);
+    }
+
+    private InventoryMovement getMovement(Long companyId, Long movementId) {
+        InventoryMovement m = inventoryMovementRepository.findById(movementId)
+                .orElseThrow(() -> new IllegalArgumentException("InventoryMovement not found"));
+        if (m.getCompany() == null || m.getCompany().getId() == null || !m.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Company mismatch");
+        }
+        return m;
+    }
+
+    @Transactional
+    public InventoryMovement completeMovement(Long companyId, Long movementId) {
+        InventoryMovement m = getMovement(companyId, movementId);
+        if (m.getStatus() != DocumentStatus.DRAFTED) {
+            throw new IllegalArgumentException("Only DRAFTED movement can be completed");
+        }
+
+        // Option A: stock is posted on COMPLETE (not on CREATE).
+        // Protect against double posting for legacy data created before this rule.
+        List<StockTransaction> existing = stockTransactionRepository.findByCompanyIdAndReferenceDocNo(companyId, m.getDocumentNo());
+        if (existing == null || existing.isEmpty()) {
+            if (m.getLines() == null || m.getLines().isEmpty()) {
+                throw new IllegalArgumentException("Movement has no lines");
+            }
+
+            for (InventoryMovementLine ln : m.getLines()) {
+                if (ln.getProduct() == null || ln.getProduct().getId() == null) {
+                    throw new IllegalArgumentException("Movement line product is required");
+                }
+                if (ln.getQty() == null || ln.getQty().compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new IllegalArgumentException("Movement line qty must be > 0");
+                }
+
+                // Re-check negative stock at completion time
+                if (m.getMovementType() == InventoryMovementType.OUT || m.getMovementType() == InventoryMovementType.TRANSFER) {
+                    assertSufficientOnHand(ln.getFromLocator(), ln.getProduct(), ln.getQty());
+                }
+
+                createStockTransactions(m.getCompany(), m.getDocumentNo(), ln.getProduct(), ln.getQty(), ln.getFromLocator(), ln.getToLocator(), m.getMovementType());
+            }
+        }
+
+        m.setStatus(DocumentStatus.COMPLETED);
+        return inventoryMovementRepository.save(m);
+    }
+
+    @Transactional
+    public InventoryMovement voidMovement(Long companyId, Long movementId) {
+        InventoryMovement m = getMovement(companyId, movementId);
+        if (m.getStatus() != DocumentStatus.DRAFTED) {
+            throw new IllegalArgumentException("Only DRAFTED movement can be voided");
+        }
+
+        // Option A: DRAFT should not have stock impact. If legacy data has already posted stock,
+        // do not allow void here (it would require reversal logic, which is Option B).
+        List<StockTransaction> existing = stockTransactionRepository.findByCompanyIdAndReferenceDocNo(companyId, m.getDocumentNo());
+        if (existing != null && !existing.isEmpty()) {
+            throw new IllegalArgumentException("Cannot void movement because stock transactions already exist (legacy data)");
+        }
+
+        m.setStatus(DocumentStatus.VOIDED);
+        return inventoryMovementRepository.save(m);
     }
 
     private void validateMovementLine(InventoryMovementType type, CreateInventoryMovementRequest.CreateInventoryMovementLineRequest lineReq) {

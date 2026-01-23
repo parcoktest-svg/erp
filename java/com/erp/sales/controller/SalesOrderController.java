@@ -13,17 +13,24 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.erp.sales.dto.SalesOrderLineBomDto;
+import com.erp.sales.dto.SalesOrderLineBomLineDto;
 import com.erp.sales.dto.SalesOrderDeliveryScheduleDto;
 import com.erp.sales.dto.SalesOrderDto;
 import com.erp.sales.dto.SalesOrderLineDto;
 import com.erp.sales.entity.SalesOrder;
 import com.erp.sales.entity.SalesOrderDeliverySchedule;
 import com.erp.sales.entity.SalesOrderLine;
+import com.erp.sales.entity.SalesOrderLineBom;
+import com.erp.sales.entity.SalesOrderLineBomLine;
 import com.erp.sales.model.SalesOrderType;
 import com.erp.sales.request.CreateSalesOrderRequest;
+import com.erp.sales.request.CopySalesOrderBomRequest;
 import com.erp.sales.request.CreateInvoiceFromSalesOrderRequest;
+import com.erp.sales.request.SetSalesOrderLineBomRequest;
 import com.erp.sales.request.UpdateSalesOrderRequest;
 import com.erp.sales.request.VoidSalesOrderRequest;
+import com.erp.sales.service.SalesOrderBomService;
 import com.erp.sales.service.SalesOrderService;
 import com.erp.sales.service.SalesInvoicingService;
 import com.erp.finance.dto.InvoiceDto;
@@ -41,10 +48,15 @@ public class SalesOrderController {
 
     private final SalesOrderService salesOrderService;
     private final SalesInvoicingService salesInvoicingService;
+    private final SalesOrderBomService salesOrderBomService;
 
-    public SalesOrderController(SalesOrderService salesOrderService, SalesInvoicingService salesInvoicingService) {
+    public SalesOrderController(
+            SalesOrderService salesOrderService,
+            SalesInvoicingService salesInvoicingService,
+            SalesOrderBomService salesOrderBomService) {
         this.salesOrderService = salesOrderService;
         this.salesInvoicingService = salesInvoicingService;
+        this.salesOrderBomService = salesOrderBomService;
     }
 
     @GetMapping
@@ -96,6 +108,30 @@ public class SalesOrderController {
             @Valid @RequestBody CreateInvoiceFromSalesOrderRequest request) {
         Invoice saved = salesInvoicingService.createArInvoiceFromSalesOrder(companyId, salesOrderId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(toInvoiceDto(saved));
+    }
+
+    @GetMapping("/{salesOrderId}/boms")
+    public ResponseEntity<List<SalesOrderLineBomDto>> listBoms(@PathVariable Long companyId, @PathVariable Long salesOrderId) {
+        List<SalesOrderLineBomDto> result = salesOrderBomService.listBySalesOrder(companyId, salesOrderId).stream().map(this::toBomDto).toList();
+        return ResponseEntity.ok(result);
+    }
+
+    @PutMapping("/{salesOrderId}/boms")
+    public ResponseEntity<SalesOrderLineBomDto> setLineBom(
+            @PathVariable Long companyId,
+            @PathVariable Long salesOrderId,
+            @Valid @RequestBody SetSalesOrderLineBomRequest request) {
+        SalesOrderLineBom saved = salesOrderBomService.setLineBom(companyId, salesOrderId, request);
+        return ResponseEntity.ok(toBomDto(saved));
+    }
+
+    @PostMapping("/{salesOrderId}/boms/copy")
+    public ResponseEntity<Void> copyBoms(
+            @PathVariable Long companyId,
+            @PathVariable Long salesOrderId,
+            @Valid @RequestBody CopySalesOrderBomRequest request) {
+        salesOrderBomService.copyFromSalesOrder(companyId, salesOrderId, request.getFromSalesOrderId());
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{salesOrderId}")
@@ -165,6 +201,24 @@ public class SalesOrderController {
         dto.setFactory(line.getFactory());
         dto.setRemark(line.getRemark());
         dto.setFilePath(line.getFilePath());
+        return dto;
+    }
+
+    private SalesOrderLineBomDto toBomDto(SalesOrderLineBom bom) {
+        SalesOrderLineBomDto dto = new SalesOrderLineBomDto();
+        dto.setId(bom.getId());
+        dto.setSalesOrderLineId(bom.getSalesOrderLine() != null ? bom.getSalesOrderLine().getId() : null);
+        dto.setSourceBomId(bom.getSourceBomId());
+        dto.setSourceBomVersion(bom.getSourceBomVersion());
+        dto.setLines(bom.getLines() != null ? bom.getLines().stream().map(this::toBomLineDto).toList() : List.of());
+        return dto;
+    }
+
+    private SalesOrderLineBomLineDto toBomLineDto(SalesOrderLineBomLine line) {
+        SalesOrderLineBomLineDto dto = new SalesOrderLineBomLineDto();
+        dto.setId(line.getId());
+        dto.setComponentProductId(line.getComponentProduct() != null ? line.getComponentProduct().getId() : null);
+        dto.setQty(line.getQty());
         return dto;
     }
 

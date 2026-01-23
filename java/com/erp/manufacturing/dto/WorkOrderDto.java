@@ -15,6 +15,7 @@ public class WorkOrderDto {
     private LocalDate workDate;
 
     private Long bomId;
+    private Long salesOrderLineBomId;
     private Long productId;
     private BigDecimal qty;
 
@@ -81,6 +82,14 @@ public class WorkOrderDto {
 
     public void setBomId(Long bomId) {
         this.bomId = bomId;
+    }
+
+    public Long getSalesOrderLineBomId() {
+        return salesOrderLineBomId;
+    }
+
+    public void setSalesOrderLineBomId(Long salesOrderLineBomId) {
+        this.salesOrderLineBomId = salesOrderLineBomId;
     }
 
     public Long getProductId() {

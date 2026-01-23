@@ -28,12 +28,17 @@ import com.erp.manufacturing.request.CompleteWorkOrderRequest;
 import com.erp.manufacturing.request.CreateWorkOrderRequest;
 import com.erp.manufacturing.request.UpdateWorkOrderRequest;
 import com.erp.manufacturing.request.VoidWorkOrderRequest;
+import com.erp.sales.entity.SalesOrderLine;
+import com.erp.sales.entity.SalesOrderLineBom;
+import com.erp.sales.entity.SalesOrderLineBomLine;
+import com.erp.sales.repository.SalesOrderLineBomRepository;
 
 @Service
 public class WorkOrderService {
 
     private final WorkOrderRepository workOrderRepository;
     private final BomRepository bomRepository;
+    private final SalesOrderLineBomRepository salesOrderLineBomRepository;
     private final CompanyRepository companyRepository;
     private final OrgRepository orgRepository;
     private final DocumentNoService documentNoService;
@@ -42,16 +47,49 @@ public class WorkOrderService {
     public WorkOrderService(
             WorkOrderRepository workOrderRepository,
             BomRepository bomRepository,
+            SalesOrderLineBomRepository salesOrderLineBomRepository,
             CompanyRepository companyRepository,
             OrgRepository orgRepository,
             DocumentNoService documentNoService,
             InventoryService inventoryService) {
         this.workOrderRepository = workOrderRepository;
         this.bomRepository = bomRepository;
+        this.salesOrderLineBomRepository = salesOrderLineBomRepository;
         this.companyRepository = companyRepository;
         this.orgRepository = orgRepository;
         this.documentNoService = documentNoService;
         this.inventoryService = inventoryService;
+    }
+
+    private List<SalesOrderLineBomLine> getSnapshotLinesOrThrow(Long companyId, SalesOrderLineBom solBom) {
+        if (solBom == null) {
+            throw new IllegalArgumentException("Sales Order line BOM snapshot is required");
+        }
+        SalesOrderLine sol = solBom.getSalesOrderLine();
+        if (sol == null || sol.getSalesOrder() == null || sol.getSalesOrder().getCompany() == null
+                || sol.getSalesOrder().getCompany().getId() == null || !sol.getSalesOrder().getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("Sales Order BOM company mismatch");
+        }
+        if (solBom.getLines() == null || solBom.getLines().isEmpty()) {
+            throw new IllegalArgumentException("Sales Order line BOM snapshot lines must not be empty");
+        }
+        return solBom.getLines();
+    }
+
+    private List<BomLine> getMasterLinesOrThrow(Long companyId, Bom bom) {
+        if (bom == null) {
+            throw new IllegalArgumentException("BOM is required");
+        }
+        if (bom.getCompany() == null || bom.getCompany().getId() == null || !bom.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("BOM company mismatch");
+        }
+        if (!bom.isActive()) {
+            throw new IllegalArgumentException("BOM is not active");
+        }
+        if (bom.getLines() == null || bom.getLines().isEmpty()) {
+            throw new IllegalArgumentException("BOM lines must not be empty");
+        }
+        return bom.getLines();
     }
 
     public List<WorkOrder> listByCompany(Long companyId) {
@@ -84,15 +122,18 @@ public class WorkOrderService {
             throw new IllegalArgumentException("Qty must be > 0");
         }
 
-        Bom bom = bomRepository.findById(request.getBomId())
-                .orElseThrow(() -> new IllegalArgumentException("BOM not found"));
-
-        if (bom.getCompany() == null || bom.getCompany().getId() == null || !bom.getCompany().getId().equals(companyId)) {
-            throw new IllegalArgumentException("BOM company mismatch");
-        }
-
-        if (!bom.isActive()) {
-            throw new IllegalArgumentException("BOM is not active");
+        Bom bom = null;
+        SalesOrderLineBom solBom = null;
+        if (request.getSalesOrderLineBomId() != null) {
+            solBom = salesOrderLineBomRepository.findById(request.getSalesOrderLineBomId())
+                    .orElseThrow(() -> new IllegalArgumentException("Sales Order line BOM snapshot not found"));
+            getSnapshotLinesOrThrow(companyId, solBom);
+        } else if (request.getBomId() != null) {
+            bom = bomRepository.findById(request.getBomId())
+                    .orElseThrow(() -> new IllegalArgumentException("BOM not found"));
+            getMasterLinesOrThrow(companyId, bom);
+        } else {
+            throw new IllegalArgumentException("Either bomId or salesOrderLineBomId is required");
         }
 
         WorkOrder wo = new WorkOrder();
@@ -100,7 +141,12 @@ public class WorkOrderService {
         wo.setOrg(org);
         wo.setWorkDate(request.getWorkDate());
         wo.setBom(bom);
-        wo.setProduct(bom.getProduct());
+        wo.setSalesOrderLineBom(solBom);
+        if (solBom != null) {
+            wo.setProduct(solBom.getSalesOrderLine().getProduct());
+        } else {
+            wo.setProduct(bom.getProduct());
+        }
         wo.setQty(request.getQty());
         wo.setFromLocator(findLocator(companyId, request.getFromLocatorId(), "From locator not found"));
         wo.setToLocator(findLocator(companyId, request.getToLocatorId(), "To locator not found"));
@@ -129,21 +175,29 @@ public class WorkOrderService {
             throw new IllegalArgumentException("Qty must be > 0");
         }
 
-        Bom bom = bomRepository.findById(request.getBomId())
-                .orElseThrow(() -> new IllegalArgumentException("BOM not found"));
-
-        if (bom.getCompany() == null || bom.getCompany().getId() == null || !bom.getCompany().getId().equals(companyId)) {
-            throw new IllegalArgumentException("BOM company mismatch");
-        }
-
-        if (!bom.isActive()) {
-            throw new IllegalArgumentException("BOM is not active");
+        Bom bom = null;
+        SalesOrderLineBom solBom = null;
+        if (request.getSalesOrderLineBomId() != null) {
+            solBom = salesOrderLineBomRepository.findById(request.getSalesOrderLineBomId())
+                    .orElseThrow(() -> new IllegalArgumentException("Sales Order line BOM snapshot not found"));
+            getSnapshotLinesOrThrow(companyId, solBom);
+        } else if (request.getBomId() != null) {
+            bom = bomRepository.findById(request.getBomId())
+                    .orElseThrow(() -> new IllegalArgumentException("BOM not found"));
+            getMasterLinesOrThrow(companyId, bom);
+        } else {
+            throw new IllegalArgumentException("Either bomId or salesOrderLineBomId is required");
         }
 
         wo.setOrg(org);
         wo.setWorkDate(request.getWorkDate());
         wo.setBom(bom);
-        wo.setProduct(bom.getProduct());
+        wo.setSalesOrderLineBom(solBom);
+        if (solBom != null) {
+            wo.setProduct(solBom.getSalesOrderLine().getProduct());
+        } else {
+            wo.setProduct(bom.getProduct());
+        }
         wo.setQty(request.getQty());
         wo.setFromLocator(findLocator(companyId, request.getFromLocatorId(), "From locator not found"));
         wo.setToLocator(findLocator(companyId, request.getToLocatorId(), "To locator not found"));
@@ -177,11 +231,21 @@ public class WorkOrderService {
         LocalDate completionDate = request.getCompletionDate();
 
         // 1) Validate on-hand for each component
-        for (BomLine line : wo.getBom().getLines()) {
-            BigDecimal required = line.getQty().multiply(wo.getQty());
-            BigDecimal onHand = inventoryService.getOnHandQty(wo.getFromLocator().getId(), line.getComponentProduct().getId());
-            if (onHand.compareTo(required) < 0) {
-                throw new IllegalArgumentException("Insufficient on-hand for component productId=" + line.getComponentProduct().getId());
+        if (wo.getSalesOrderLineBom() != null) {
+            for (SalesOrderLineBomLine line : getSnapshotLinesOrThrow(companyId, wo.getSalesOrderLineBom())) {
+                BigDecimal required = line.getQty().multiply(wo.getQty());
+                BigDecimal onHand = inventoryService.getOnHandQty(wo.getFromLocator().getId(), line.getComponentProduct().getId());
+                if (onHand.compareTo(required) < 0) {
+                    throw new IllegalArgumentException("Insufficient on-hand for component productId=" + line.getComponentProduct().getId());
+                }
+            }
+        } else {
+            for (BomLine line : getMasterLinesOrThrow(companyId, wo.getBom())) {
+                BigDecimal required = line.getQty().multiply(wo.getQty());
+                BigDecimal onHand = inventoryService.getOnHandQty(wo.getFromLocator().getId(), line.getComponentProduct().getId());
+                if (onHand.compareTo(required) < 0) {
+                    throw new IllegalArgumentException("Insufficient on-hand for component productId=" + line.getComponentProduct().getId());
+                }
             }
         }
 
@@ -192,13 +256,24 @@ public class WorkOrderService {
         issueReq.setDescription("WO " + wo.getDocumentNo() + " issue components");
 
         List<CreateInventoryMovementRequest.CreateInventoryMovementLineRequest> issueLines = new ArrayList<>();
-        for (BomLine line : wo.getBom().getLines()) {
-            CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
-            l.setProductId(line.getComponentProduct().getId());
-            l.setQty(line.getQty().multiply(wo.getQty()));
-            l.setFromLocatorId(wo.getFromLocator().getId());
-            l.setToLocatorId(null);
-            issueLines.add(l);
+        if (wo.getSalesOrderLineBom() != null) {
+            for (SalesOrderLineBomLine line : getSnapshotLinesOrThrow(companyId, wo.getSalesOrderLineBom())) {
+                CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
+                l.setProductId(line.getComponentProduct().getId());
+                l.setQty(line.getQty().multiply(wo.getQty()));
+                l.setFromLocatorId(wo.getFromLocator().getId());
+                l.setToLocatorId(null);
+                issueLines.add(l);
+            }
+        } else {
+            for (BomLine line : getMasterLinesOrThrow(companyId, wo.getBom())) {
+                CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
+                l.setProductId(line.getComponentProduct().getId());
+                l.setQty(line.getQty().multiply(wo.getQty()));
+                l.setFromLocatorId(wo.getFromLocator().getId());
+                l.setToLocatorId(null);
+                issueLines.add(l);
+            }
         }
         issueReq.setLines(issueLines);
 
@@ -243,13 +318,24 @@ public class WorkOrderService {
 			issueRevReq.setDescription("WO " + wo.getDocumentNo() + " reversal issue");
 
 			List<CreateInventoryMovementRequest.CreateInventoryMovementLineRequest> issueRevLines = new ArrayList<>();
-			for (BomLine line : wo.getBom().getLines()) {
-				CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
-				l.setProductId(line.getComponentProduct().getId());
-				l.setQty(line.getQty().multiply(wo.getQty()));
-				l.setToLocatorId(wo.getFromLocator().getId());
-				l.setFromLocatorId(null);
-				issueRevLines.add(l);
+			if (wo.getSalesOrderLineBom() != null) {
+				for (SalesOrderLineBomLine line : getSnapshotLinesOrThrow(companyId, wo.getSalesOrderLineBom())) {
+					CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
+					l.setProductId(line.getComponentProduct().getId());
+					l.setQty(line.getQty().multiply(wo.getQty()));
+					l.setToLocatorId(wo.getFromLocator().getId());
+					l.setFromLocatorId(null);
+					issueRevLines.add(l);
+				}
+			} else {
+				for (BomLine line : getMasterLinesOrThrow(companyId, wo.getBom())) {
+					CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
+					l.setProductId(line.getComponentProduct().getId());
+					l.setQty(line.getQty().multiply(wo.getQty()));
+					l.setToLocatorId(wo.getFromLocator().getId());
+					l.setFromLocatorId(null);
+					issueRevLines.add(l);
+				}
 			}
 			issueRevReq.setLines(issueRevLines);
 			InventoryMovement issueRevMovement = inventoryService.createMovement(companyId, issueRevReq);

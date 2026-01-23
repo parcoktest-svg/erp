@@ -33,7 +33,9 @@ import com.erp.repository.EmployeeRepository;
 import com.erp.sales.entity.SalesOrder;
 import com.erp.sales.entity.SalesOrderDeliverySchedule;
 import com.erp.sales.entity.SalesOrderLine;
+import com.erp.sales.entity.SalesOrderLineBom;
 import com.erp.sales.model.SalesOrderType;
+import com.erp.sales.repository.SalesOrderLineBomRepository;
 import com.erp.sales.repository.SalesOrderRepository;
 import com.erp.sales.request.CreateSalesOrderRequest;
 import com.erp.sales.request.UpdateSalesOrderRequest;
@@ -54,6 +56,7 @@ public class SalesOrderService {
     private final WarehouseRepository warehouseRepository;
     private final CurrencyRepository currencyRepository;
     private final DocumentNoService documentNoService;
+    private final SalesOrderLineBomRepository salesOrderLineBomRepository;
 
     public SalesOrderService(
             SalesOrderRepository salesOrderRepository,
@@ -67,7 +70,8 @@ public class SalesOrderService {
             EmployeeRepository employeeRepository,
             WarehouseRepository warehouseRepository,
             CurrencyRepository currencyRepository,
-            DocumentNoService documentNoService) {
+            DocumentNoService documentNoService,
+            SalesOrderLineBomRepository salesOrderLineBomRepository) {
         this.salesOrderRepository = salesOrderRepository;
         this.companyRepository = companyRepository;
         this.orgRepository = orgRepository;
@@ -80,6 +84,7 @@ public class SalesOrderService {
         this.warehouseRepository = warehouseRepository;
         this.currencyRepository = currencyRepository;
         this.documentNoService = documentNoService;
+        this.salesOrderLineBomRepository = salesOrderLineBomRepository;
     }
 
     public List<SalesOrder> listByCompany(Long companyId) {
@@ -404,6 +409,19 @@ public class SalesOrderService {
         if (so.getLines() == null || so.getLines().isEmpty()) {
             throw new IllegalArgumentException("Sales Order lines must not be empty");
         }
+
+        // Require BOM snapshot per line before approval (BOM is maintained in Sales Order)
+        for (SalesOrderLine l : so.getLines()) {
+            if (l.getId() == null) {
+                throw new IllegalArgumentException("Sales Order line id is missing");
+            }
+            SalesOrderLineBom bom = salesOrderLineBomRepository.findBySalesOrderLine_Id(l.getId()).orElse(null);
+            if (bom == null || bom.getLines() == null || bom.getLines().isEmpty()) {
+                throw new IllegalArgumentException("BOM snapshot is required for sales order line productId="
+                        + (l.getProduct() != null ? l.getProduct().getId() : null));
+            }
+        }
+
         so.setStatus(DocumentStatus.APPROVED);
         return salesOrderRepository.save(so);
     }

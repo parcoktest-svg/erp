@@ -99,6 +99,13 @@ export const salesApi = {
   createInvoiceFromSalesOrder: (companyId: any, salesOrderId: any, payload: any) =>
     http.post(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/invoices`, payload).then((r) => r.data),
 
+  listSalesOrderBoms: (companyId: any, salesOrderId: any) =>
+    http.get(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/boms`).then((r) => r.data),
+  setSalesOrderLineBom: (companyId: any, salesOrderId: any, payload: any) =>
+    http.put(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/boms`, payload).then((r) => r.data),
+  copySalesOrderBoms: (companyId: any, salesOrderId: any, payload: any) =>
+    http.post(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/boms/copy`, payload).then((r) => r.data),
+
   createGoodsShipment: (companyId: any, salesOrderId: any, payload: any) =>
     http.post(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/goods-shipments`, payload).then((r) => r.data)
 }

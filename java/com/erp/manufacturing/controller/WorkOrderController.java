@@ -91,6 +91,7 @@ public class WorkOrderController {
         dto.setStatus(wo.getStatus());
         dto.setWorkDate(wo.getWorkDate());
         dto.setBomId(wo.getBom() != null ? wo.getBom().getId() : null);
+        dto.setSalesOrderLineBomId(wo.getSalesOrderLineBom() != null ? wo.getSalesOrderLineBom().getId() : null);
         dto.setProductId(wo.getProduct() != null ? wo.getProduct().getId() : null);
         dto.setQty(wo.getQty());
         dto.setFromLocatorId(wo.getFromLocator() != null ? wo.getFromLocator().getId() : null);

@@ -9,6 +9,7 @@ import com.erp.core.model.BaseEntity;
 import com.erp.core.model.DocumentStatus;
 import com.erp.inventory.entity.Locator;
 import com.erp.masterdata.entity.Product;
+import com.erp.sales.entity.SalesOrderLineBom;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -41,9 +42,13 @@ public class WorkOrder extends BaseEntity {
     @Column(nullable = false)
     private LocalDate workDate;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "bom_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bom_id")
     private Bom bom;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sales_order_line_bom_id")
+    private SalesOrderLineBom salesOrderLineBom;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", nullable = false)
@@ -116,6 +121,14 @@ public class WorkOrder extends BaseEntity {
 
     public void setBom(Bom bom) {
         this.bom = bom;
+    }
+
+    public SalesOrderLineBom getSalesOrderLineBom() {
+        return salesOrderLineBom;
+    }
+
+    public void setSalesOrderLineBom(SalesOrderLineBom salesOrderLineBom) {
+        this.salesOrderLineBom = salesOrderLineBom;
     }
 
     public Product getProduct() {

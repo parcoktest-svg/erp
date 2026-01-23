@@ -544,6 +544,7 @@ export default function SalesOrdersView() {
         width: 140,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. 1200"
             value={record.qty}
             onChange={(e) =>
               setForm((prev) => {
@@ -565,6 +566,7 @@ export default function SalesOrdersView() {
         width: 140,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. 55000"
             value={record.unitPrice}
             onChange={(e) =>
               setForm((prev) => {
@@ -584,6 +586,7 @@ export default function SalesOrdersView() {
         width: 200,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="Item description"
             value={record.description}
             onChange={(e) =>
               setForm((prev) => {
@@ -603,6 +606,7 @@ export default function SalesOrdersView() {
         width: 120,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. PCS"
             value={record.unit}
             onChange={(e) =>
               setForm((prev) => {
@@ -622,6 +626,7 @@ export default function SalesOrdersView() {
         width: 120,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. M / 32"
             value={record.size}
             onChange={(e) =>
               setForm((prev) => {
@@ -641,6 +646,7 @@ export default function SalesOrdersView() {
         width: 140,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="Local size / conversion"
             value={record.nationalSize}
             onChange={(e) =>
               setForm((prev) => {
@@ -660,6 +666,7 @@ export default function SalesOrdersView() {
         width: 140,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. STY-TSH-2401"
             value={record.style}
             onChange={(e) =>
               setForm((prev) => {
@@ -679,6 +686,7 @@ export default function SalesOrdersView() {
         width: 140,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. CUT-2026-001"
             value={record.cuttingNo}
             onChange={(e) =>
               setForm((prev) => {
@@ -698,6 +706,7 @@ export default function SalesOrdersView() {
         width: 140,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. Navy"
             value={record.color}
             onChange={(e) =>
               setForm((prev) => {
@@ -717,6 +726,7 @@ export default function SalesOrdersView() {
         width: 160,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="Destination"
             value={record.destination}
             onChange={(e) =>
               setForm((prev) => {
@@ -736,6 +746,7 @@ export default function SalesOrdersView() {
         width: 160,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="DPP amount"
             value={record.supplyAmount}
             onChange={(e) =>
               setForm((prev) => {
@@ -754,6 +765,7 @@ export default function SalesOrdersView() {
         width: 140,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="VAT amount"
             value={record.vatAmount}
             onChange={(e) =>
               setForm((prev) => {
@@ -772,6 +784,7 @@ export default function SalesOrdersView() {
         width: 120,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. 3.25"
             value={record.fobPrice}
             onChange={(e) =>
               setForm((prev) => {
@@ -790,6 +803,7 @@ export default function SalesOrdersView() {
         width: 120,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. 3.60"
             value={record.ldpPrice}
             onChange={(e) =>
               setForm((prev) => {
@@ -811,6 +825,7 @@ export default function SalesOrdersView() {
         width: 140,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. 8500"
             value={record.cmtCost}
             onChange={(e) =>
               setForm((prev) => {
@@ -829,6 +844,7 @@ export default function SalesOrdersView() {
         width: 140,
         render: (_: any, record: any, idx: number) => (
           <Input
+            placeholder="e.g. 12000"
             value={record.cmCost}
             onChange={(e) =>
               setForm((prev) => {
@@ -1046,6 +1062,7 @@ export default function SalesOrdersView() {
             <Form.Item label="Order Type">
               <Select
                 value={form.orderType}
+                placeholder="Select order type"
                 options={[
                   { label: 'Domestic', value: 'DOMESTIC' },
                   { label: 'Export', value: 'EXPORT' }
@@ -1065,6 +1082,7 @@ export default function SalesOrdersView() {
                 disabled={!customers.length}
                 value={form.businessPartnerId ?? undefined}
                 options={customerOptions}
+                placeholder="Search customer"
                 onChange={(v) => setForm((prev) => ({ ...prev, businessPartnerId: v }))}
                 filterOption={(input, option) => String(option?.label || '').toLowerCase().includes(input.toLowerCase())}
               />
@@ -1075,6 +1093,7 @@ export default function SalesOrdersView() {
                 disabled={!priceListVersions.length}
                 value={form.priceListVersionId ?? undefined}
                 options={plvOptions}
+                placeholder="Select price list version"
                 onChange={(v) => setForm((prev) => ({ ...prev, priceListVersionId: v }))}
                 filterOption={(input, option) => String(option?.label || '').toLowerCase().includes(input.toLowerCase())}
               />
@@ -1084,6 +1103,7 @@ export default function SalesOrdersView() {
           <Form.Item label="Order Date">
             <DatePicker
               value={form.orderDate ? dayjs(form.orderDate) : null}
+              placeholder="Select order date"
               onChange={(d) => setForm((prev) => ({ ...prev, orderDate: d ? d.format('YYYY-MM-DD') : '' }))}
             />
           </Form.Item>
@@ -1091,7 +1111,11 @@ export default function SalesOrdersView() {
           {form.orderType === 'EXPORT' ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <Form.Item label="Buyer PO">
-                <Input value={form.buyerPo} onChange={(e) => setForm((p) => ({ ...p, buyerPo: e.target.value }))} />
+                <Input
+                  value={form.buyerPo}
+                  placeholder="Buyer PO number"
+                  onChange={(e) => setForm((p) => ({ ...p, buyerPo: e.target.value }))}
+                />
               </Form.Item>
               <Form.Item label="Department">
                 <Select
@@ -1099,6 +1123,7 @@ export default function SalesOrdersView() {
                   disabled={!departments.length}
                   value={form.departmentId ?? undefined}
                   options={deptOptions}
+                  placeholder="Select department"
                   onChange={(v) => setForm((p) => ({ ...p, departmentId: v }))}
                   filterOption={(input, option) => String(option?.label || '').toLowerCase().includes(input.toLowerCase())}
                 />
@@ -1109,13 +1134,18 @@ export default function SalesOrdersView() {
                   disabled={!employees.length}
                   value={form.employeeId ?? undefined}
                   options={empOptions}
+                  placeholder="Select employee"
                   onChange={(v) => setForm((p) => ({ ...p, employeeId: v }))}
                   filterOption={(input, option) => String(option?.label || '').toLowerCase().includes(input.toLowerCase())}
                 />
               </Form.Item>
 
               <Form.Item label="In Charge">
-                <Input value={form.inCharge} onChange={(e) => setForm((p) => ({ ...p, inCharge: e.target.value }))} />
+                <Input
+                  value={form.inCharge}
+                  placeholder="Person in charge"
+                  onChange={(e) => setForm((p) => ({ ...p, inCharge: e.target.value }))}
+                />
               </Form.Item>
               <Form.Item label="Currency">
                 <Select

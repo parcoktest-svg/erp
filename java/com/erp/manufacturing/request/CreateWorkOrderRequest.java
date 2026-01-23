@@ -9,8 +9,9 @@ public class CreateWorkOrderRequest {
 
     private Long orgId;
 
-    @NotNull
     private Long bomId;
+
+    private Long salesOrderLineBomId;
 
     @NotNull
     private LocalDate workDate;
@@ -40,6 +41,14 @@ public class CreateWorkOrderRequest {
 
     public void setBomId(Long bomId) {
         this.bomId = bomId;
+    }
+
+    public Long getSalesOrderLineBomId() {
+        return salesOrderLineBomId;
+    }
+
+    public void setSalesOrderLineBomId(Long salesOrderLineBomId) {
+        this.salesOrderLineBomId = salesOrderLineBomId;
     }
 
     public LocalDate getWorkDate() {

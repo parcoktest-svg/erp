@@ -614,10 +614,11 @@ export default function SalesOrdersView() {
         <Form layout="vertical" form={form}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <Form.Item label="Org" name="orgId">
-              <Select allowClear loading={orgLoading} options={orgOptions} placeholder="Org (optional)" />
+              <Select allowClear loading={orgLoading} options={orgOptions} placeholder="Selection" />
             </Form.Item>
             <Form.Item label="Order Type" name="orderType" rules={[{ required: true }]}>
               <Select
+                placeholder="Selection"
                 options={[
                   { label: 'Domestic', value: 'DOMESTIC' },
                   { label: 'Export', value: 'EXPORT' }
@@ -630,13 +631,13 @@ export default function SalesOrdersView() {
               />
             </Form.Item>
             <Form.Item label="Customer" name="businessPartnerId" rules={[{ required: true }]}>
-              <Select showSearch options={customerOptions} optionFilterProp="label" />
+              <Select showSearch options={customerOptions} optionFilterProp="label" placeholder="Selection" />
             </Form.Item>
             <Form.Item label="Price List Version" name="priceListVersionId" rules={[{ required: true }]}>
-              <Select showSearch options={plvOptions} optionFilterProp="label" />
+              <Select showSearch options={plvOptions} optionFilterProp="label" placeholder="Selection" />
             </Form.Item>
             <Form.Item label="Order Date" name="orderDate" rules={[{ required: true }]}>
-              <DatePicker style={{ width: '100%' }} />
+              <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
             </Form.Item>
           </div>
 
@@ -646,10 +647,10 @@ export default function SalesOrdersView() {
                 <Input />
               </Form.Item>
               <Form.Item label="Department" name="departmentId">
-                <Select allowClear showSearch options={deptOptions} optionFilterProp="label" />
+                <Select allowClear showSearch options={deptOptions} optionFilterProp="label" placeholder="Selection" />
               </Form.Item>
               <Form.Item label="Employee" name="employeeId">
-                <Select allowClear showSearch options={empOptions} optionFilterProp="label" />
+                <Select allowClear showSearch options={empOptions} optionFilterProp="label" placeholder="Selection" />
               </Form.Item>
 
               <Form.Item label="In Charge" name="inCharge">
@@ -663,17 +664,17 @@ export default function SalesOrdersView() {
               </Form.Item>
 
               <Form.Item label="Forwarding Warehouse" name="forwardingWarehouseId">
-                <Select allowClear showSearch options={whOptions} optionFilterProp="label" />
+                <Select allowClear showSearch options={whOptions} optionFilterProp="label" placeholder="Selection" />
               </Form.Item>
               <Form.Item label="Currency" name="currencyId" rules={[{ required: orderType === 'EXPORT' }]}>
-                <Select allowClear showSearch options={currencyOptions} optionFilterProp="label" />
+                <Select allowClear showSearch options={currencyOptions} optionFilterProp="label" placeholder="Selection" />
               </Form.Item>
               <Form.Item label="Exchange Rate" name="exchangeRate">
-                <InputNumber style={{ width: '100%' }} min={0} />
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
               </Form.Item>
 
               <Form.Item label="Foreign Amount" name="foreignAmount">
-                <InputNumber style={{ width: '100%' }} min={0} />
+                <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
               </Form.Item>
               <Form.Item label="Memo" name="memo">
                 <Input />
@@ -700,14 +701,14 @@ export default function SalesOrdersView() {
                           rules={[{ required: true }]}
                           style={{ width: 420 }}
                         >
-                          <Select showSearch options={productOptions} optionFilterProp="label" />
+                          <Select showSearch options={productOptions} optionFilterProp="label" placeholder="Selection" />
                         </Form.Item>
                         <Form.Item {...field} name={[field.name, 'qty']} label="Qty" rules={[{ required: true }]} style={{ width: 160 }}>
-                          <InputNumber style={{ width: '100%' }} min={0.0001} />
+                          <InputNumber style={{ width: '100%' }} min={0.0001} placeholder="0" />
                         </Form.Item>
                         {orderType === 'DOMESTIC' ? (
                           <Form.Item {...field} name={[field.name, 'unitPrice']} label="Unit Price" style={{ width: 160 }}>
-                            <InputNumber style={{ width: '100%' }} min={0} />
+                            <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                           </Form.Item>
                         ) : null}
                         <Button danger onClick={() => remove(field.name)} disabled={fields.length <= 1}>
@@ -747,16 +748,16 @@ export default function SalesOrdersView() {
                           </Space>
                           <Space wrap style={{ width: '100%' }}>
                             <Form.Item {...field} name={[field.name, 'supplyAmount']} label="Supply" style={{ width: 160 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} />
+                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'vatAmount']} label="VAT" style={{ width: 160 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} />
+                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'fobPrice']} label="FOB" style={{ width: 160 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} />
+                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'ldpPrice']} label="LDP" style={{ width: 160 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} />
+                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                             </Form.Item>
                           </Space>
                         </>
@@ -765,16 +766,16 @@ export default function SalesOrdersView() {
                       {(orderType === 'DOMESTIC' || orderType === 'EXPORT') && orderType ? (
                         <Space wrap style={{ width: '100%' }}>
                           <Form.Item {...field} name={[field.name, 'cmtCost']} label="CMT Cost" style={{ width: 160 }}>
-                            <InputNumber style={{ width: '100%' }} min={0} />
+                            <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                           </Form.Item>
                           <Form.Item {...field} name={[field.name, 'cmCost']} label="CM Cost" style={{ width: 160 }}>
-                            <InputNumber style={{ width: '100%' }} min={0} />
+                            <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                           </Form.Item>
                           <Form.Item {...field} name={[field.name, 'fabricEta']} label="Fabric ETA" style={{ width: 200 }}>
-                            <DatePicker style={{ width: '100%' }} />
+                            <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
                           </Form.Item>
                           <Form.Item {...field} name={[field.name, 'fabricEtd']} label="Fabric ETD" style={{ width: 200 }}>
-                            <DatePicker style={{ width: '100%' }} />
+                            <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
                           </Form.Item>
                         </Space>
                       ) : null}
@@ -783,16 +784,16 @@ export default function SalesOrdersView() {
                         <>
                           <Space wrap style={{ width: '100%' }}>
                             <Form.Item {...field} name={[field.name, 'dpPrice']} label="DP Price" style={{ width: 200 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} />
+                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'deliveryDate']} label="Delivery Date" style={{ width: 200 }}>
-                              <DatePicker style={{ width: '100%' }} />
+                              <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'shipMode']} label="Ship Mode" style={{ width: 200 }}>
-                              <Input />
+                              <Input placeholder="Selection" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'factory']} label="Factory" style={{ width: 200 }}>
-                              <Input />
+                              <Input placeholder="Selection" />
                             </Form.Item>
                           </Space>
                           <Space wrap style={{ width: '100%' }}>
@@ -800,7 +801,7 @@ export default function SalesOrdersView() {
                               <Input />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'filePath']} label="File Path" style={{ width: 420 }}>
-                              <Input placeholder="/path/to/file" />
+                              <Input />
                             </Form.Item>
                           </Space>
                         </>
@@ -825,13 +826,13 @@ export default function SalesOrdersView() {
                     {fields.map((field) => (
                       <Space key={field.key} align="baseline" wrap style={{ width: '100%' }}>
                         <Form.Item {...field} name={[field.name, 'deliveryDate']} label="Delivery Date" style={{ width: 200 }}>
-                          <DatePicker style={{ width: '100%' }} />
+                          <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
                         </Form.Item>
                         <Form.Item {...field} name={[field.name, 'shipMode']} label="Ship Mode" style={{ width: 200 }}>
-                          <Input />
+                          <Input placeholder="Selection" />
                         </Form.Item>
                         <Form.Item {...field} name={[field.name, 'factory']} label="Factory" style={{ width: 200 }}>
-                          <Input />
+                          <Input placeholder="Selection" />
                         </Form.Item>
                         <Form.Item {...field} name={[field.name, 'remark']} label="Remark" style={{ width: 260 }}>
                           <Input />
@@ -914,10 +915,10 @@ export default function SalesOrdersView() {
         <Form layout="vertical" form={shipForm}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Form.Item label="From Locator" name="fromLocatorId" rules={[{ required: true }]}>
-              <Select showSearch options={locatorOptions} optionFilterProp="label" placeholder="Select locator" />
+              <Select showSearch options={locatorOptions} optionFilterProp="label" placeholder="Selection" />
             </Form.Item>
             <Form.Item label="Movement Date" name="movementDate" rules={[{ required: true }]}>
-              <DatePicker style={{ width: '100%' }} />
+              <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
             </Form.Item>
           </div>
           <Form.Item label="Description" name="description">
@@ -948,7 +949,7 @@ export default function SalesOrdersView() {
                         style={{ marginBottom: 0 }}
                         rules={[{ required: true }]}
                       >
-                        <InputNumber style={{ width: '100%' }} min={0} max={Number(r.remainingQty ?? 0)} />
+                        <InputNumber style={{ width: '100%' }} min={0} max={Number(r.remainingQty ?? 0)} placeholder="0" />
                       </Form.Item>
                     )
                   },
@@ -1023,7 +1024,7 @@ export default function SalesOrdersView() {
       >
         <Form layout="vertical" form={voidForm}>
           <Form.Item name="voidDate" label="Void Date" rules={[{ required: true }]}>
-            <DatePicker style={{ width: '100%' }} />
+            <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
           </Form.Item>
           <Form.Item name="reason" label="Reason">
             <Input />

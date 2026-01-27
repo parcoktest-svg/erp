@@ -1,6 +1,5 @@
 package com.erp.sales.service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -96,7 +95,6 @@ public class SalesOrderBomService {
             }
             bomSnap.setSourceBomVersion(master.getVersion());
         } else if (request.getLines() != null) {
-            List<SalesOrderLineBomLine> snapLines = new ArrayList<>();
             for (SetSalesOrderLineBomRequest.SetSalesOrderLineBomLineRequest lineReq : request.getLines()) {
                 Product component = productRepository.findById(lineReq.getComponentProductId())
                         .orElseThrow(() -> new IllegalArgumentException("Component product not found"));
@@ -108,9 +106,19 @@ public class SalesOrderBomService {
                 snapLine.setSalesOrderLineBom(bomSnap);
                 snapLine.setComponentProduct(component);
                 snapLine.setQty(lineReq.getQty());
-                snapLines.add(snapLine);
+                snapLine.setBomCode(lineReq.getBomCode());
+                snapLine.setDescription1(lineReq.getDescription1());
+                snapLine.setColorDescription2(lineReq.getColorDescription2());
+                snapLine.setUnit(lineReq.getUnit());
+                snapLine.setUnitPriceForeign(lineReq.getUnitPriceForeign());
+                snapLine.setUnitPriceDomestic(lineReq.getUnitPriceDomestic());
+                snapLine.setYy(lineReq.getYy());
+                snapLine.setExchangeRate(lineReq.getExchangeRate());
+                snapLine.setAmountForeign(lineReq.getAmountForeign());
+                snapLine.setAmountDomestic(lineReq.getAmountDomestic());
+                snapLine.setCurrencyId(lineReq.getCurrencyId());
+                bomSnap.getLines().add(snapLine);
             }
-            bomSnap.setLines(snapLines);
         }
 
         return salesOrderLineBomRepository.save(bomSnap);
@@ -176,6 +184,17 @@ public class SalesOrderBomService {
                     l.setSalesOrderLineBom(tgt);
                     l.setComponentProduct(srcLine.getComponentProduct());
                     l.setQty(srcLine.getQty());
+                    l.setBomCode(srcLine.getBomCode());
+                    l.setDescription1(srcLine.getDescription1());
+                    l.setColorDescription2(srcLine.getColorDescription2());
+                    l.setUnit(srcLine.getUnit());
+                    l.setUnitPriceForeign(srcLine.getUnitPriceForeign());
+                    l.setUnitPriceDomestic(srcLine.getUnitPriceDomestic());
+                    l.setYy(srcLine.getYy());
+                    l.setExchangeRate(srcLine.getExchangeRate());
+                    l.setAmountForeign(srcLine.getAmountForeign());
+                    l.setAmountDomestic(srcLine.getAmountDomestic());
+                    l.setCurrencyId(srcLine.getCurrencyId());
                     tgt.getLines().add(l);
                 }
             }

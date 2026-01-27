@@ -40,7 +40,7 @@ export const masterDataApi = {
   deleteCurrency: (companyId: any, currencyId: any) =>
     http.delete(`/api/masterdata/companies/${companyId}/currencies/${currencyId}`).then((r) => r.data),
 
-  listProducts: (companyId: any) => http.get(`/api/masterdata/companies/${companyId}/products`).then((r) => r.data),
+  listProducts: (companyId: any, params?: any) => http.get(`/api/masterdata/companies/${companyId}/products`, { params }).then((r) => r.data),
   createProduct: (companyId: any, payload: any) => http.post(`/api/masterdata/companies/${companyId}/products`, payload).then((r) => r.data),
   updateProduct: (companyId: any, productId: any, payload: any) =>
     http.put(`/api/masterdata/companies/${companyId}/products/${productId}`, payload).then((r) => r.data),

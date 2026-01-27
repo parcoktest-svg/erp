@@ -25,8 +25,11 @@ public class ProductService {
         this.uomRepository = uomRepository;
     }
 
-    public List<Product> listByCompany(Long companyId) {
-        return productRepository.findByCompanyId(companyId);
+    public List<Product> listByCompany(Long companyId, String itemType) {
+        if (itemType == null || itemType.isBlank()) {
+            return productRepository.findByCompanyId(companyId);
+        }
+        return productRepository.findByCompanyIdAndItemTypeIgnoreCase(companyId, itemType);
     }
 
     @Transactional
@@ -72,6 +75,7 @@ public class ProductService {
 
         existing.setCode(code);
         existing.setName(patch.getName());
+        existing.setItemType(patch.getItemType());
         existing.setUom(uom);
         existing.setActive(patch.isActive());
         return productRepository.save(existing);

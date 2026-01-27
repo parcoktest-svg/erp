@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.erp.masterdata.entity.Product;
@@ -31,8 +32,8 @@ public class MasterDataProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Product>> list(@PathVariable Long companyId) {
-        return ResponseEntity.ok(productService.listByCompany(companyId));
+    public ResponseEntity<List<Product>> list(@PathVariable Long companyId, @RequestParam(required = false) String itemType) {
+        return ResponseEntity.ok(productService.listByCompany(companyId, itemType));
     }
 
     @PostMapping
@@ -40,6 +41,7 @@ public class MasterDataProductController {
         Product p = new Product();
         p.setCode(request.getCode());
         p.setName(request.getName());
+        p.setItemType(request.getItemType());
         p.setActive(true);
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -51,6 +53,7 @@ public class MasterDataProductController {
         Product patch = new Product();
         patch.setCode(request.getCode());
         patch.setName(request.getName());
+        patch.setItemType(request.getItemType());
         patch.setActive(request.isActive());
         return ResponseEntity.ok(productService.update(companyId, productId, request.getUomId(), patch));
     }
@@ -70,6 +73,8 @@ public class MasterDataProductController {
 
         @NotNull
         private Long uomId;
+
+        private String itemType;
 
         public String getCode() {
             return code;
@@ -94,6 +99,14 @@ public class MasterDataProductController {
         public void setUomId(Long uomId) {
             this.uomId = uomId;
         }
+
+        public String getItemType() {
+            return itemType;
+        }
+
+        public void setItemType(String itemType) {
+            this.itemType = itemType;
+        }
     }
 
     public static class UpdateProductRequest {
@@ -105,6 +118,8 @@ public class MasterDataProductController {
 
         @NotNull
         private Long uomId;
+
+        private String itemType;
 
         private boolean active = true;
 
@@ -130,6 +145,14 @@ public class MasterDataProductController {
 
         public void setUomId(Long uomId) {
             this.uomId = uomId;
+        }
+
+        public String getItemType() {
+            return itemType;
+        }
+
+        public void setItemType(String itemType) {
+            this.itemType = itemType;
         }
 
         public boolean isActive() {

@@ -27,6 +27,9 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "item_type")
+    private String itemType;
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "uom_id", nullable = false)
@@ -56,6 +59,14 @@ public class Product extends BaseEntity {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getItemType() {
+        return itemType;
+    }
+
+    public void setItemType(String itemType) {
+        this.itemType = itemType;
     }
 
     public Uom getUom() {

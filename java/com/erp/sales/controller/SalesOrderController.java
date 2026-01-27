@@ -219,6 +219,17 @@ public class SalesOrderController {
         dto.setId(line.getId());
         dto.setComponentProductId(line.getComponentProduct() != null ? line.getComponentProduct().getId() : null);
         dto.setQty(line.getQty());
+        dto.setBomCode(line.getBomCode());
+        dto.setDescription1(line.getDescription1());
+        dto.setColorDescription2(line.getColorDescription2());
+        dto.setUnit(line.getUnit());
+        dto.setUnitPriceForeign(line.getUnitPriceForeign());
+        dto.setUnitPriceDomestic(line.getUnitPriceDomestic());
+        dto.setYy(line.getYy());
+        dto.setExchangeRate(line.getExchangeRate());
+        dto.setAmountForeign(line.getAmountForeign());
+        dto.setAmountDomestic(line.getAmountDomestic());
+        dto.setCurrencyId(line.getCurrencyId());
         return dto;
     }
 

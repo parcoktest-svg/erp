@@ -815,6 +815,7 @@ CREATE TABLE `md_product` (
   `updated_by` varchar(255) DEFAULT NULL,
   `active` bit(1) NOT NULL,
   `code` varchar(255) NOT NULL,
+  `item_type` varchar(255) DEFAULT NULL,
   `name` varchar(255) NOT NULL,
   `company_id` bigint(20) NOT NULL,
   `uom_id` bigint(20) NOT NULL

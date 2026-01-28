@@ -73,6 +73,8 @@ export default function SalesOrdersView() {
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [locators, setLocators] = useState<LocatorRow[]>([])
 
+  const [soLineLookups, setSoLineLookups] = useState<any | null>(null)
+
   const [form] = Form.useForm()
 
   const [shipOpen, setShipOpen] = useState(false)
@@ -118,7 +120,7 @@ export default function SalesOrdersView() {
   const loadLookups = async (cid: number) => {
     setOrgLoading(true)
     try {
-      const [orgRes, bps, prods, pls, curs, taxs, depts, emps, whs, locs] = await Promise.all([
+      const [orgRes, bps, prods, pls, curs, taxs, depts, emps, whs, locs, lineLookups] = await Promise.all([
         coreApi.listOrgs(cid),
         masterDataApi.listBusinessPartners(cid),
         masterDataApi.listProducts(cid),
@@ -128,7 +130,8 @@ export default function SalesOrdersView() {
         hrApi.listDepartments(),
         hrApi.listEmployees(),
         masterDataApi.listWarehouses(cid),
-        inventoryApi.listLocators(cid)
+        inventoryApi.listLocators(cid),
+        salesApi.lineLookups(cid)
       ])
 
       setOrgs((orgRes || []) as OrgRow[])
@@ -140,6 +143,7 @@ export default function SalesOrdersView() {
       setEmployees(emps || [])
       setWarehouses(whs || [])
       setLocators((locs || []) as LocatorRow[])
+      setSoLineLookups(lineLookups || null)
 
       const plArr = pls || []
       const versionLists = await Promise.all(plArr.map((pl: any) => masterDataApi.listPriceListVersions(pl.id)))
@@ -157,6 +161,7 @@ export default function SalesOrdersView() {
       setEmployees([])
       setWarehouses([])
       setLocators([])
+      setSoLineLookups(null)
     } finally {
       setOrgLoading(false)
     }
@@ -260,6 +265,41 @@ export default function SalesOrdersView() {
   const currencyOptions = useMemo(
     () => (currencies || []).map((c: any) => ({ label: `${c.code} - ${c.name}`, value: c.id })),
     [currencies]
+  )
+
+  const soLineUnitOptions = useMemo(
+    () => ((soLineLookups?.units as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    [soLineLookups]
+  )
+
+  const soLineSizeOptions = useMemo(
+    () => ((soLineLookups?.sizes as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    [soLineLookups]
+  )
+
+  const soLineNationalSizeOptions = useMemo(
+    () => ((soLineLookups?.nationalSizes as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    [soLineLookups]
+  )
+
+  const soLineStyleOptions = useMemo(
+    () => ((soLineLookups?.styles as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    [soLineLookups]
+  )
+
+  const soLineCuttingNoOptions = useMemo(
+    () => ((soLineLookups?.cuttingNos as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    [soLineLookups]
+  )
+
+  const soLineColorOptions = useMemo(
+    () => ((soLineLookups?.colors as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    [soLineLookups]
+  )
+
+  const soLineDestinationOptions = useMemo(
+    () => ((soLineLookups?.destinations as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    [soLineLookups]
   )
 
   const productLabelById = useMemo(() => {
@@ -1112,27 +1152,27 @@ export default function SalesOrdersView() {
                               <Input />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'unit']} label="Unit" style={{ width: 160 }}>
-                              <Input />
+                              <Select allowClear showSearch options={soLineUnitOptions} optionFilterProp="label" placeholder="Selection" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'size']} label="Size" style={{ width: 160 }}>
-                              <Input />
+                              <Select allowClear showSearch options={soLineSizeOptions} optionFilterProp="label" placeholder="Selection" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'nationalSize']} label="National Size" style={{ width: 160 }}>
-                              <Input />
+                              <Select allowClear showSearch options={soLineNationalSizeOptions} optionFilterProp="label" placeholder="Selection" />
                             </Form.Item>
                           </Space>
                           <Space wrap style={{ width: '100%' }}>
                             <Form.Item {...field} name={[field.name, 'style']} label="Style" style={{ width: 160 }}>
-                              <Input />
+                              <Select allowClear showSearch options={soLineStyleOptions} optionFilterProp="label" placeholder="Selection" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'cuttingNo']} label="Cutting No" style={{ width: 160 }}>
-                              <Input />
+                              <Select allowClear showSearch options={soLineCuttingNoOptions} optionFilterProp="label" placeholder="Selection" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'color']} label="Color" style={{ width: 160 }}>
-                              <Input />
+                              <Select allowClear showSearch options={soLineColorOptions} optionFilterProp="label" placeholder="Selection" />
                             </Form.Item>
                             <Form.Item {...field} name={[field.name, 'destination']} label="Destination" style={{ width: 220 }}>
-                              <Input />
+                              <Select allowClear showSearch options={soLineDestinationOptions} optionFilterProp="label" placeholder="Selection" />
                             </Form.Item>
                           </Space>
                           <Space wrap style={{ width: '100%' }}>

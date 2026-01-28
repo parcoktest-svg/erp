@@ -86,10 +86,11 @@ export const salesApi = {
   createSalesOrder: (companyId: any, payload: any) => http.post(`/api/sales/companies/${companyId}/sales-orders`, payload).then((r) => r.data),
   updateSalesOrder: (companyId: any, salesOrderId: any, payload: any) =>
     http.put(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}`, payload).then((r) => r.data),
-  deleteSalesOrder: (companyId: any, salesOrderId: any) =>
-    http.delete(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}`).then((r) => r.data),
+  deleteSalesOrder: (companyId: any, salesOrderId: any) => http.delete(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}`).then((r) => r.data),
   getSalesOrder: (companyId: any, salesOrderId: any) =>
     http.get(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}`).then((r) => r.data),
+
+  lineLookups: (companyId: any) => http.get(`/api/sales/companies/${companyId}/sales-orders/line-lookups`).then((r) => r.data),
 
   approveSalesOrder: (companyId: any, salesOrderId: any) =>
     http.post(`/api/sales/companies/${companyId}/sales-orders/${salesOrderId}/approve`).then((r) => r.data),

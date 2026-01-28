@@ -18,6 +18,7 @@ import com.erp.sales.dto.SalesOrderLineBomLineDto;
 import com.erp.sales.dto.SalesOrderDeliveryScheduleDto;
 import com.erp.sales.dto.SalesOrderDto;
 import com.erp.sales.dto.SalesOrderLineDto;
+import com.erp.sales.dto.SalesOrderLineLookupsDto;
 import com.erp.sales.entity.SalesOrder;
 import com.erp.sales.entity.SalesOrderDeliverySchedule;
 import com.erp.sales.entity.SalesOrderLine;
@@ -31,6 +32,7 @@ import com.erp.sales.request.SetSalesOrderLineBomRequest;
 import com.erp.sales.request.UpdateSalesOrderRequest;
 import com.erp.sales.request.VoidSalesOrderRequest;
 import com.erp.sales.service.SalesOrderBomService;
+import com.erp.sales.service.SalesOrderLineLookupService;
 import com.erp.sales.service.SalesOrderService;
 import com.erp.sales.service.SalesInvoicingService;
 import com.erp.finance.dto.InvoiceDto;
@@ -49,20 +51,28 @@ public class SalesOrderController {
     private final SalesOrderService salesOrderService;
     private final SalesInvoicingService salesInvoicingService;
     private final SalesOrderBomService salesOrderBomService;
+    private final SalesOrderLineLookupService salesOrderLineLookupService;
 
     public SalesOrderController(
             SalesOrderService salesOrderService,
             SalesInvoicingService salesInvoicingService,
-            SalesOrderBomService salesOrderBomService) {
+            SalesOrderBomService salesOrderBomService,
+            SalesOrderLineLookupService salesOrderLineLookupService) {
         this.salesOrderService = salesOrderService;
         this.salesInvoicingService = salesInvoicingService;
         this.salesOrderBomService = salesOrderBomService;
+        this.salesOrderLineLookupService = salesOrderLineLookupService;
     }
 
     @GetMapping
     public ResponseEntity<List<SalesOrderDto>> list(@PathVariable Long companyId) {
         List<SalesOrderDto> result = salesOrderService.listByCompany(companyId).stream().map(this::toDto).toList();
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/line-lookups")
+    public ResponseEntity<SalesOrderLineLookupsDto> lineLookups(@PathVariable Long companyId) {
+        return ResponseEntity.ok(salesOrderLineLookupService.getLookups(companyId));
     }
 
     @GetMapping("/{salesOrderId}")

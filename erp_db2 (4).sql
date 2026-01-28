@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 27, 2026 at 09:27 AM
+-- Generation Time: Jan 28, 2026 at 10:36 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -140,7 +140,7 @@ CREATE TABLE `core_document_sequence` (
 
 INSERT INTO `core_document_sequence` (`id`, `created_at`, `created_by`, `updated_at`, `updated_by`, `document_type`, `next_number`, `padding`, `prefix`, `company_id`) VALUES
 (7, '2026-01-12 07:48:31.000000', 'admin@test.com', '2026-01-22 09:54:02.000000', 'jtrustcoba@gmail.com', 'PURCHASE_ORDER', 9, 5, 'PO-', 1),
-(8, '2026-01-12 07:49:20.000000', 'admin@test.com', '2026-01-27 08:24:42.000000', 'admin@test.com', 'SALES_ORDER', 20, 5, 'SO-', 1),
+(8, '2026-01-12 07:49:20.000000', 'admin@test.com', '2026-01-27 09:30:50.000000', 'admin@test.com', 'SALES_ORDER', 21, 5, 'SO-', 1),
 (9, '2026-01-12 08:44:41.000000', 'admin@test.com', '2026-01-21 04:00:26.000000', 'admin@test.com', 'INVENTORY_MOVEMENT', 12, 5, 'MM-', 1),
 (12, '2026-01-13 03:55:23.000000', 'admin@test.com', '2026-01-21 03:39:00.000000', 'admin@test.com', 'WORK_ORDER', 4, 5, 'WO-', 1),
 (16, '2026-01-14 04:03:59.000000', 'admin@test.com', '2026-01-21 03:20:06.000000', 'admin@test.com', 'INVENTORY_ADJUSTMENT', 5, 5, 'IA-', 1),
@@ -677,7 +677,8 @@ INSERT INTO `flyway_schema_history` (`installed_rank`, `version`, `description`,
 (29, '29', 'fin invoice line purchase order line link', 'SQL', 'V29__fin_invoice_line_purchase_order_line_link.sql', 1559364431, 'root', '2026-01-22 09:44:58', 25, 1),
 (30, '30', 'trx sales order line bom snapshot', 'SQL', 'V30__trx_sales_order_line_bom_snapshot.sql', 29786050, 'root', '2026-01-23 07:18:43', 74, 1),
 (31, '31', 'mfg work order sales order line bom snapshot', 'SQL', 'V31__mfg_work_order_sales_order_line_bom_snapshot.sql', 346571887, 'root', '2026-01-23 07:18:43', 77, 1),
-(32, '32', 'trx sales order line bom line extra fields', 'SQL', 'V32__trx_sales_order_line_bom_line_extra_fields.sql', -1686267567, 'root', '2026-01-26 08:42:39', 25, 1);
+(32, '32', 'trx sales order line bom line extra fields', 'SQL', 'V32__trx_sales_order_line_bom_line_extra_fields.sql', -1686267567, 'root', '2026-01-26 08:42:39', 25, 1),
+(33, '33', 'trx sales order line lookup seed', 'SQL', 'V33__trx_sales_order_line_lookup_seed.sql', -1879345266, 'root', '2026-01-28 02:16:23', 74, 1);
 
 -- --------------------------------------------------------
 
@@ -1493,8 +1494,8 @@ INSERT INTO `trx_sales_order` (`id`, `created_at`, `created_by`, `updated_at`, `
 (13, '2026-01-22 03:50:31.000000', 'admin@test.com', '2026-01-22 06:59:50.000000', 'jtrustcoba@gmail.com', 'SO-00013', 1000.00, '2026-01-22', 'APPROVED', 1000.00, 0.00, 2, 1, 2, 1, 'DOMESTIC', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'coba memo', NULL, NULL, NULL),
 (15, '2026-01-26 07:39:00.000000', 'admin@test.com', '2026-01-26 07:40:27.000000', 'admin@test.com', 'SO-00015', 1001.00, '2026-01-26', 'DRAFTED', 1001.00, 0.00, 3, 1, 1, 1, 'DOMESTIC', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (16, '2026-01-26 07:41:04.000000', 'admin@test.com', '2026-01-26 07:41:04.000000', 'admin@test.com', 'SO-00016', 2000.00, '2026-01-26', 'DRAFTED', 2000.00, 0.00, 2, 1, 1, 1, 'DOMESTIC', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(17, '2026-01-27 07:24:14.000000', 'admin@test.com', '2026-01-27 07:24:14.000000', 'admin@test.com', 'SO-00017', 1000.00, '2026-01-27', 'DRAFTED', 1000.00, 0.00, 2, 1, 2, 1, 'DOMESTIC', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(18, '2026-01-27 08:22:15.000000', 'admin@test.com', '2026-01-27 08:24:06.000000', 'admin@test.com', 'SO-00018', 1000.00, '2026-01-27', 'APPROVED', 1000.00, 0.00, 2, 1, 1, 1, 'DOMESTIC', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+(18, '2026-01-27 08:22:15.000000', 'admin@test.com', '2026-01-27 08:24:06.000000', 'admin@test.com', 'SO-00018', 1000.00, '2026-01-27', 'APPROVED', 1000.00, 0.00, 2, 1, 1, 1, 'DOMESTIC', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(20, '2026-01-27 09:30:50.000000', 'admin@test.com', '2026-01-28 06:12:18.000000', 'admin@test.com', 'SO-00020', 1000.00, '2026-01-27', 'VOIDED', 1000.00, 0.00, 2, 1, 1, 1, 'DOMESTIC', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1572,8 +1573,8 @@ INSERT INTO `trx_sales_order_line` (`id`, `created_at`, `created_by`, `updated_a
 (71, '2026-01-26 07:40:27.000000', 'admin@test.com', '2026-01-26 07:40:27.000000', 'admin@test.com', 1000.00, 1000.00, 1.00, 1, 15, 2, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (72, '2026-01-26 07:41:04.000000', 'admin@test.com', '2026-01-26 07:41:04.000000', 'admin@test.com', 1000.00, 1000.00, 1.00, 1, 16, 2, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (73, '2026-01-26 07:41:04.000000', 'admin@test.com', '2026-01-26 07:41:04.000000', 'admin@test.com', 1000.00, 1000.00, 1.00, 1, 16, 2, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(74, '2026-01-27 07:24:14.000000', 'admin@test.com', '2026-01-27 07:24:14.000000', 'admin@test.com', 1000.00, 1000.00, 1.00, 1, 17, 2, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(79, '2026-01-27 08:22:15.000000', 'admin@test.com', '2026-01-27 08:22:15.000000', 'admin@test.com', 1000.00, 1000.00, 1.00, 1, 18, 2, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+(79, '2026-01-27 08:22:15.000000', 'admin@test.com', '2026-01-27 08:22:15.000000', 'admin@test.com', 1000.00, 1000.00, 1.00, 1, 18, 2, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(81, '2026-01-27 09:30:50.000000', 'admin@test.com', '2026-01-27 09:30:50.000000', 'admin@test.com', 1000.00, 1000.00, 1.00, 1, 20, 2, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1599,7 +1600,8 @@ CREATE TABLE `trx_sales_order_line_bom` (
 INSERT INTO `trx_sales_order_line_bom` (`id`, `created_at`, `updated_at`, `created_by`, `updated_by`, `sales_order_line_id`, `source_bom_id`, `source_bom_version`) VALUES
 (1, '2026-01-26 09:13:03.000000', '2026-01-26 09:28:55.000000', 'admin@test.com', 'admin@test.com', 71, NULL, NULL),
 (2, '2026-01-27 08:15:59.000000', '2026-01-27 08:15:59.000000', 'admin@test.com', 'admin@test.com', 73, NULL, NULL),
-(3, '2026-01-27 08:22:38.000000', '2026-01-27 08:23:36.000000', 'admin@test.com', 'admin@test.com', 79, 1, 1);
+(3, '2026-01-27 08:22:38.000000', '2026-01-27 08:23:36.000000', 'admin@test.com', 'admin@test.com', 79, 1, 1),
+(4, '2026-01-27 09:31:22.000000', '2026-01-27 09:32:50.000000', 'admin@test.com', 'admin@test.com', 81, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1637,7 +1639,10 @@ INSERT INTO `trx_sales_order_line_bom_line` (`id`, `created_at`, `updated_at`, `
 (14, '2026-01-27 08:15:59.000000', '2026-01-27 08:15:59.000000', 'admin@test.com', 'admin@test.com', 2, 3, 2.00, 'kkk', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (15, '2026-01-27 08:18:58.000000', '2026-01-27 08:18:58.000000', 'admin@test.com', 'admin@test.com', 1, 1, 1.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (16, '2026-01-27 08:18:58.000000', '2026-01-27 08:18:58.000000', 'admin@test.com', 'admin@test.com', 1, 3, 3.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(21, '2026-01-27 08:23:36.000000', '2026-01-27 08:23:36.000000', 'admin@test.com', 'admin@test.com', 3, 1, 1.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+(21, '2026-01-27 08:23:36.000000', '2026-01-27 08:23:36.000000', 'admin@test.com', 'admin@test.com', 3, 1, 1.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(29, '2026-01-27 09:32:50.000000', '2026-01-27 09:32:50.000000', 'admin@test.com', 'admin@test.com', 4, 1, 1.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(30, '2026-01-27 09:32:50.000000', '2026-01-27 09:32:50.000000', 'admin@test.com', 'admin@test.com', 4, 3, 2.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(31, '2026-01-27 09:32:50.000000', '2026-01-27 09:32:50.000000', 'admin@test.com', 'admin@test.com', 4, 9, 3.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -2466,7 +2471,7 @@ ALTER TABLE `trx_purchase_order_line`
 -- AUTO_INCREMENT for table `trx_sales_order`
 --
 ALTER TABLE `trx_sales_order`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `trx_sales_order_delivery_schedule`
@@ -2478,19 +2483,19 @@ ALTER TABLE `trx_sales_order_delivery_schedule`
 -- AUTO_INCREMENT for table `trx_sales_order_line`
 --
 ALTER TABLE `trx_sales_order_line`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=81;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=82;
 
 --
 -- AUTO_INCREMENT for table `trx_sales_order_line_bom`
 --
 ALTER TABLE `trx_sales_order_line_bom`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `trx_sales_order_line_bom_line`
 --
 ALTER TABLE `trx_sales_order_line_bom_line`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- Constraints for dumped tables

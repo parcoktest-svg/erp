@@ -92,8 +92,9 @@ export default function AppLayout() {
       <Sider width={240} theme="light">
         <div style={{ padding: 16, borderBottom: '1px solid #f0f0f0' }}>
           <Typography.Title level={5} style={{ margin: 0 }}>
-            Modules
+            ERP Garment
           </Typography.Title>
+          <Typography.Text type="secondary">Enterprise Resource Planning</Typography.Text>
         </div>
         <Menu
           mode="inline"
@@ -105,7 +106,22 @@ export default function AppLayout() {
         />
       </Sider>
       <Layout>
-        <Header style={{ background: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+        <Header
+          style={{
+            background: '#fff',
+            borderBottom: '1px solid #f0f0f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <Typography.Text strong>ERP Garment</Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Modern Enterprise ERP
+            </Typography.Text>
+          </div>
+
           <Space>
             <Typography.Text type="secondary">{role ? `Role: ${role}` : ''}</Typography.Text>
             <Button

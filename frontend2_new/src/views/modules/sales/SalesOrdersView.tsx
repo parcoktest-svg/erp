@@ -463,6 +463,7 @@ export default function SalesOrdersView() {
   }
 
   function openBomLineEditor(lineId: number) {
+    message.info({ content: `Open BOM Lines for line ${lineId}`, key: 'bom-lines-open' })
     setBomLineEditorLineId(lineId)
     setBomLineEditorTab('RAW')
     setBomLineEditorOpen(true)
@@ -571,7 +572,15 @@ export default function SalesOrdersView() {
     if (!tasks.length) {
       const anySelected = Object.values(bomDraftByLineId || {}).some((x: any) => x?.sourceBomId != null)
       if (!anySelected) {
-        message.error('Please select Master BOM at least on 1 line')
+        message.loading({ content: 'Refreshing...', key: 'bom-assign-save' })
+        try {
+          await reloadBomData(soId)
+          await load(companyId)
+          message.success({ content: 'Saved', key: 'bom-assign-save' })
+        } catch (e: any) {
+          message.destroy('bom-assign-save')
+          message.error(getApiErrorMessage(e, 'Failed to refresh'))
+        }
         return
       }
       message.info('No BOM changes')
@@ -1007,6 +1016,7 @@ export default function SalesOrdersView() {
         open={open}
         title={editId ? 'Edit Sales Order' : 'Create Sales Order'}
         width={1100}
+        bodyStyle={{ maxHeight: '80vh', overflowY: 'auto' }}
         onCancel={() => setOpen(false)}
         onOk={() => void save()}
         okButtonProps={{ loading: saving }}
@@ -1239,7 +1249,7 @@ export default function SalesOrdersView() {
                   </Card>
                 ))}
 
-                <Button onClick={() => add({ itemType: 'ALL', productId: products[0]?.id ?? null, qty: 1 })}>Add Line</Button>
+                <Button onClick={() => add({ itemType: 'ALL', productId: products[0]?.id ?? null, qty: 1 })}>Add Item</Button>
               </Space>
             )}
           </Form.List>
@@ -1400,7 +1410,7 @@ export default function SalesOrdersView() {
               width: 140,
               render: (_: any, r: any) => (
                 <Button size="small" onClick={() => openBomLineEditor(Number(r?.id))} disabled={bomLoading || bomSaving}>
-                  Edit Lines
+                  Edit BOM
                 </Button>
               )
             }
@@ -1412,6 +1422,7 @@ export default function SalesOrdersView() {
         open={bomLineEditorOpen}
         title={`BOM Lines - SO Line ${bomLineEditorLineId ?? ''}`.trim()}
         width={1200}
+        zIndex={2000}
         onCancel={() => {
           setBomLineEditorOpen(false)
           setBomLineEditorLineId(null)
@@ -1472,7 +1483,7 @@ export default function SalesOrdersView() {
                       }}
                       disabled={!bomLineEditorLineId || bomSaving}
                     >
-                      Add Row
+                      Add BOM
                     </Button>
                   </div>
 

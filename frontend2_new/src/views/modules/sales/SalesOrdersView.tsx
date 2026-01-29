@@ -18,6 +18,7 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { coreApi, hrApi, inventoryApi, manufacturingApi, masterDataApi, salesApi } from '@/utils/api'
 import { useContextStore } from '@/stores/context'
 import { getApiErrorMessage } from '@/utils/error'
@@ -47,6 +48,7 @@ function toLocalDateString(d: any): string | null {
 }
 
 export default function SalesOrdersView() {
+  const navigate = useNavigate()
   const companyId = useContextStore((s) => s.companyId)
   const setCompanyId = useContextStore((s) => s.setCompanyId)
 
@@ -651,7 +653,7 @@ export default function SalesOrdersView() {
         <Typography.Link
           onClick={(e) => {
             e.preventDefault()
-            void openBom(r)
+            navigate(`/modules/sales/sales-orders/${r.id}`)
           }}
         >
           {v || r.id}
@@ -683,6 +685,9 @@ export default function SalesOrdersView() {
         <Space>
           <Button size="small" disabled={!canEditRow(r)} onClick={() => void openEdit(r)}>
             Edit
+          </Button>
+          <Button size="small" onClick={() => void openBom(r)}>
+            BOM
           </Button>
           <Popconfirm
             title="Approve sales order?"

@@ -105,7 +105,7 @@ public class OrderFulfillmentService {
                 .toList();
         moveReq.setLines(lines);
 
-        com.erp.inventory.entity.InventoryMovement movement = inventoryService.createMovement(companyId, moveReq);
+        com.erp.inventory.entity.InventoryMovement movement = inventoryService.createMovement(companyId, moveReq, null, po.getId());
 
         // Post finance journal entry (minimal): Debit INVENTORY, Credit AP for received value
         BigDecimal receiptValue = BigDecimal.ZERO;

@@ -47,6 +47,9 @@ public class InventoryMovement extends BaseEntity {
     @Column(name = "sales_order_id")
     private Long salesOrderId;
 
+    @Column(name = "purchase_order_id")
+    private Long purchaseOrderId;
+
     @OneToMany(mappedBy = "movement", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InventoryMovementLine> lines = new ArrayList<>();
 
@@ -104,6 +107,14 @@ public class InventoryMovement extends BaseEntity {
 
     public void setSalesOrderId(Long salesOrderId) {
         this.salesOrderId = salesOrderId;
+    }
+
+    public Long getPurchaseOrderId() {
+        return purchaseOrderId;
+    }
+
+    public void setPurchaseOrderId(Long purchaseOrderId) {
+        this.purchaseOrderId = purchaseOrderId;
     }
 
     public List<InventoryMovementLine> getLines() {

@@ -50,6 +50,12 @@ public class PurchaseOrderController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/{purchaseOrderId}")
+    public ResponseEntity<PurchaseOrderDto> get(@PathVariable Long companyId, @PathVariable Long purchaseOrderId) {
+        PurchaseOrder po = purchaseOrderService.get(companyId, purchaseOrderId);
+        return ResponseEntity.ok(toDto(po));
+    }
+
     @PostMapping
     public ResponseEntity<PurchaseOrderDto> create(@PathVariable Long companyId, @Valid @RequestBody CreatePurchaseOrderRequest request) {
         PurchaseOrder saved = purchaseOrderService.create(companyId, request);

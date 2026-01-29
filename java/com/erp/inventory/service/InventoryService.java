@@ -100,9 +100,9 @@ public class InventoryService {
         return inventoryMovementRepository.findByCompanyId(companyId);
     }
 
-    public List<InventoryMovement> listMovements(Long companyId, InventoryMovementType movementType, String q, Long salesOrderId) {
+    public List<InventoryMovement> listMovements(Long companyId, InventoryMovementType movementType, String q, Long salesOrderId, Long purchaseOrderId) {
         List<InventoryMovement> base = inventoryMovementRepository.findByCompanyId(companyId);
-        if ((movementType == null) && (salesOrderId == null) && (q == null || q.isBlank())) {
+        if ((movementType == null) && (salesOrderId == null) && (purchaseOrderId == null) && (q == null || q.isBlank())) {
             return base;
         }
 
@@ -116,6 +116,11 @@ public class InventoryService {
             }
             if (salesOrderId != null) {
                 if (m == null || m.getSalesOrderId() == null || !m.getSalesOrderId().equals(salesOrderId)) {
+                    continue;
+                }
+            }
+            if (purchaseOrderId != null) {
+                if (m == null || m.getPurchaseOrderId() == null || !m.getPurchaseOrderId().equals(purchaseOrderId)) {
                     continue;
                 }
             }
@@ -150,11 +155,16 @@ public class InventoryService {
 
     @Transactional
     public InventoryMovement createMovement(Long companyId, CreateInventoryMovementRequest request) {
-        return createMovement(companyId, request, null);
+        return createMovement(companyId, request, null, null);
     }
 
     @Transactional
     public InventoryMovement createMovement(Long companyId, CreateInventoryMovementRequest request, Long salesOrderId) {
+        return createMovement(companyId, request, salesOrderId, null);
+    }
+
+    @Transactional
+    public InventoryMovement createMovement(Long companyId, CreateInventoryMovementRequest request, Long salesOrderId, Long purchaseOrderId) {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("Company not found"));
 
@@ -164,6 +174,7 @@ public class InventoryService {
         movement.setMovementDate(request.getMovementDate());
         movement.setDescription(request.getDescription());
         movement.setSalesOrderId(salesOrderId);
+        movement.setPurchaseOrderId(purchaseOrderId);
         movement.setDocumentNo(documentNoService.nextDocumentNo(companyId, DocumentType.INVENTORY_MOVEMENT));
 
         List<InventoryMovementLine> lines = new ArrayList<>();

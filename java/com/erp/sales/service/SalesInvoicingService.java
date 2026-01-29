@@ -48,7 +48,7 @@ public class SalesInvoicingService {
             throw new IllegalArgumentException("Voided Sales Order cannot be invoiced");
         }
 
-        if (invoiceRepository.findByCompanyIdAndSalesOrderId(companyId, so.getId()).isPresent()) {
+        if (!invoiceRepository.findByCompanyIdAndSalesOrderId(companyId, so.getId()).isEmpty()) {
             throw new IllegalArgumentException("Invoice already exists for this Sales Order");
         }
 

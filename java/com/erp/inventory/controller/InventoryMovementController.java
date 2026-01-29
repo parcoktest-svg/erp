@@ -34,8 +34,9 @@ public class InventoryMovementController {
             @PathVariable Long companyId,
             @RequestParam(required = false) InventoryMovementType movementType,
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) Long salesOrderId) {
-        return ResponseEntity.ok(inventoryService.listMovements(companyId, movementType, q, salesOrderId));
+            @RequestParam(required = false) Long salesOrderId,
+            @RequestParam(required = false) Long purchaseOrderId) {
+        return ResponseEntity.ok(inventoryService.listMovements(companyId, movementType, q, salesOrderId, purchaseOrderId));
     }
 
     @PostMapping

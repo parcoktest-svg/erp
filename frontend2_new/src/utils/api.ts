@@ -118,6 +118,8 @@ export const purchaseApi = {
     http.put(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}`, payload).then((r) => r.data),
   deletePurchaseOrder: (companyId: any, purchaseOrderId: any) =>
     http.delete(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}`).then((r) => r.data),
+  getPurchaseOrder: (companyId: any, purchaseOrderId: any) =>
+    http.get(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}`).then((r) => r.data),
   approvePurchaseOrder: (companyId: any, purchaseOrderId: any) =>
     http.post(`/api/purchase/companies/${companyId}/purchase-orders/${purchaseOrderId}/approve`).then((r) => r.data),
   voidPurchaseOrder: (companyId: any, purchaseOrderId: any, payload: any) =>
@@ -207,7 +209,7 @@ export const financeApi = {
   balanceSheetReport: (companyId: any, params: any) =>
     http.get(`/api/finance/companies/${companyId}/reports/balance-sheet`, { params }).then((r) => r.data),
 
-  listInvoices: (companyId: any) => http.get(`/api/finance/companies/${companyId}/invoices`).then((r) => r.data),
+  listInvoices: (companyId: any, params?: any) => http.get(`/api/finance/companies/${companyId}/invoices`, { params }).then((r) => r.data),
   createInvoice: (companyId: any, payload: any) => http.post(`/api/finance/companies/${companyId}/invoices`, payload).then((r) => r.data),
   completeInvoice: (companyId: any, invoiceId: any) =>
     http.post(`/api/finance/companies/${companyId}/invoices/${invoiceId}/complete`).then((r) => r.data),

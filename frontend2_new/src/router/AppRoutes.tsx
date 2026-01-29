@@ -18,7 +18,9 @@ import ProductsView from '@/views/modules/masterdata/ProductsView'
 import WarehousesView from '@/views/modules/masterdata/WarehousesView'
 
 import PurchaseOrdersView from '@/views/modules/purchase/PurchaseOrdersView'
+ import PurchaseOrderDetailView from '@/views/modules/purchase/PurchaseOrderDetailView'
 import SalesOrdersView from '@/views/modules/sales/SalesOrdersView'
+ import SalesOrderDetailView from '@/views/modules/sales/SalesOrderDetailView'
 import GoodsShipmentsView from '@/views/modules/sales/GoodsShipmentsView'
 
 import LocatorsView from '@/views/modules/inventory/LocatorsView'
@@ -96,7 +98,9 @@ export default function AppRoutes() {
           <Route path="/modules/masterdata/warehouses" element={<WarehousesView />} />
 
           <Route path="/modules/purchase/purchase-orders" element={<PurchaseOrdersView />} />
+          <Route path="/modules/purchase/purchase-orders/:id" element={<PurchaseOrderDetailView />} />
           <Route path="/modules/sales/sales-orders" element={<SalesOrdersView />} />
+          <Route path="/modules/sales/sales-orders/:id" element={<SalesOrderDetailView />} />
           <Route path="/modules/sales/goods-shipments" element={<GoodsShipmentsView />} />
 
           <Route path="/modules/inventory/locators" element={<LocatorsView />} />

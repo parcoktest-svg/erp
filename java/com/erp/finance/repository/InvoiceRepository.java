@@ -1,7 +1,6 @@
 package com.erp.finance.repository;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,7 +12,9 @@ import com.erp.finance.model.InvoiceType;
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     List<Invoice> findByCompanyId(Long companyId);
 
-    Optional<Invoice> findByCompanyIdAndSalesOrderId(Long companyId, Long salesOrderId);
+    List<Invoice> findByCompanyIdAndSalesOrderId(Long companyId, Long salesOrderId);
+
+    List<Invoice> findByCompanyIdAndPurchaseOrderId(Long companyId, Long purchaseOrderId);
 
     List<Invoice> findByCompanyIdAndInvoiceTypeAndStatusNotAndOpenAmountGreaterThan(
             Long companyId,

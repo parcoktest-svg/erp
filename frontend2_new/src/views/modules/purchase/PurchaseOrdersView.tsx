@@ -261,7 +261,21 @@ export default function PurchaseOrdersView() {
 
   const columns: ColumnsType<PurchaseOrderRow> = useMemo(
     () => [
-      { title: 'Doc No', dataIndex: 'documentNo', width: 160 },
+      {
+        title: 'Doc No',
+        dataIndex: 'documentNo',
+        width: 160,
+        render: (v: any, r: PurchaseOrderRow) => (
+          <Typography.Link
+            onClick={(e) => {
+              e.preventDefault()
+              navigate(`/modules/purchase/purchase-orders/${r.id}`)
+            }}
+          >
+            {v || r.id}
+          </Typography.Link>
+        )
+      },
       {
         title: 'Status',
         dataIndex: 'status',

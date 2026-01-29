@@ -33,8 +33,6 @@ import com.erp.masterdata.entity.TaxRate;
 import com.erp.masterdata.repository.BusinessPartnerRepository;
 import com.erp.masterdata.repository.ProductRepository;
 import com.erp.masterdata.repository.TaxRateRepository;
-import com.erp.finance.service.GlAccountMappingService;
-import com.erp.finance.service.AccountingPeriodService;
 
 @Service
 public class InvoiceService {
@@ -75,6 +73,14 @@ public class InvoiceService {
 
     public List<Invoice> listByCompany(Long companyId) {
         return invoiceRepository.findByCompanyId(companyId);
+    }
+
+    public List<Invoice> listBySalesOrder(Long companyId, Long salesOrderId) {
+        return invoiceRepository.findByCompanyIdAndSalesOrderId(companyId, salesOrderId);
+    }
+
+    public List<Invoice> listByPurchaseOrder(Long companyId, Long purchaseOrderId) {
+        return invoiceRepository.findByCompanyIdAndPurchaseOrderId(companyId, purchaseOrderId);
     }
 
     private Invoice getInvoice(Long companyId, Long invoiceId) {

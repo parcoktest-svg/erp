@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.erp.finance.dto.InvoiceDto;
@@ -37,8 +38,21 @@ public class InvoiceController {
     }
 
     @GetMapping
-    public ResponseEntity<List<InvoiceDto>> list(@PathVariable Long companyId) {
-        List<InvoiceDto> result = invoiceService.listByCompany(companyId).stream().map(this::toDto).toList();
+    public ResponseEntity<List<InvoiceDto>> list(
+            @PathVariable Long companyId,
+            @RequestParam(required = false) Long salesOrderId,
+            @RequestParam(required = false) Long purchaseOrderId) {
+
+        List<Invoice> base;
+        if (salesOrderId != null) {
+            base = invoiceService.listBySalesOrder(companyId, salesOrderId);
+        } else if (purchaseOrderId != null) {
+            base = invoiceService.listByPurchaseOrder(companyId, purchaseOrderId);
+        } else {
+            base = invoiceService.listByCompany(companyId);
+        }
+
+        List<InvoiceDto> result = base.stream().map(this::toDto).toList();
         return ResponseEntity.ok(result);
     }
 

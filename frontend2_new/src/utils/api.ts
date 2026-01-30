@@ -23,7 +23,32 @@ export const coreApi = {
   listCompanies: () => http.get('/api/core/companies').then((r) => r.data),
   createCompany: (payload: any) => http.post('/api/core/companies', payload).then((r) => r.data),
   listOrgs: (companyId: any) => http.get(`/api/core/companies/${companyId}/orgs`).then((r) => r.data),
-  createOrg: (companyId: any, payload: any) => http.post(`/api/core/companies/${companyId}/orgs`, payload).then((r) => r.data)
+  createOrg: (companyId: any, payload: any) => http.post(`/api/core/companies/${companyId}/orgs`, payload).then((r) => r.data),
+
+  listAttachments: (companyId: any, params: { refType: string; refId: any }) =>
+    http.get(`/api/core/companies/${companyId}/attachments`, { params }).then((r) => r.data),
+  uploadAttachment: (companyId: any, params: { refType: string; refId: any; name?: string }, file: File) => {
+    const fd = new FormData()
+    fd.append('refType', params.refType)
+    fd.append('refId', String(params.refId))
+    if (params.name) fd.append('name', params.name)
+    fd.append('file', file)
+    return http
+      .post(`/api/core/companies/${companyId}/attachments`, fd, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      .then((r) => r.data)
+  },
+  deleteAttachment: (companyId: any, attachmentId: any) =>
+    http.delete(`/api/core/companies/${companyId}/attachments/${attachmentId}`).then((r) => r.data),
+  downloadAttachment: (companyId: any, attachmentId: any) =>
+    http
+      .get(`/api/core/companies/${companyId}/attachments/${attachmentId}/download`, {
+        responseType: 'blob'
+      })
+      .then((r) => ({ data: r.data, headers: r.headers }))
 }
 
 export const masterDataApi = {

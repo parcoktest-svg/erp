@@ -127,6 +127,11 @@ export default function PurchaseOrdersView() {
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<PurchaseOrderRow[]>([])
 
+  const [filterDocNo, setFilterDocNo] = useState<string>('')
+  const [filterStatus, setFilterStatus] = useState<string | null>(null)
+  const [filterVendorId, setFilterVendorId] = useState<number | null>(null)
+  const [filterDateRange, setFilterDateRange] = useState<any>(null)
+
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<PurchaseOrderRow | null>(null)
   const [form] = Form.useForm()
@@ -258,6 +263,53 @@ export default function PurchaseOrdersView() {
     for (const o of orgs) m.set(o.id, `${o.code || o.id} - ${o.name || ''}`)
     return m
   }, [orgs])
+
+  const orgOptions = useMemo(
+    () => orgs.map((o) => ({ value: o.id, label: `${o.code || o.id} - ${o.name || ''}` })),
+    [orgs]
+  )
+
+  const vendorOptions = useMemo(
+    () => (vendors || []).map((v: any) => ({ value: v.id, label: `${v.name || v.id}` })),
+    [vendors]
+  )
+
+  const filteredRows = useMemo(() => {
+    const docQ = String(filterDocNo || '').trim().toLowerCase()
+    const statusQ = filterStatus ? String(filterStatus) : ''
+    const vendorId = filterVendorId
+    const start = filterDateRange?.[0] ? dayjs(filterDateRange[0]).startOf('day') : null
+    const end = filterDateRange?.[1] ? dayjs(filterDateRange[1]).endOf('day') : null
+
+    return (rows || []).filter((r: any) => {
+      if (docQ) {
+        const dn = String(r?.documentNo || '').toLowerCase()
+        if (!dn.includes(docQ)) return false
+      }
+      if (statusQ) {
+        if (String(r?.status || '') !== statusQ) return false
+      }
+      if (vendorId != null) {
+        if (Number(r?.vendorId) !== Number(vendorId)) return false
+      }
+      if (start || end) {
+        const od = r?.orderDate ? dayjs(r.orderDate) : null
+        if (!od) return false
+        if (start && od.isBefore(start)) return false
+        if (end && od.isAfter(end)) return false
+      }
+      return true
+    })
+  }, [filterDateRange, filterDocNo, filterStatus, filterVendorId, rows])
+
+  const summary = useMemo(() => {
+    const list = filteredRows || []
+    const total = list.reduce((acc: number, r: any) => acc + (Number(r?.grandTotal) || 0), 0)
+    return {
+      count: list.length,
+      grandTotal: total
+    }
+  }, [filteredRows])
 
   const columns: ColumnsType<PurchaseOrderRow> = useMemo(
     () => [
@@ -540,11 +592,74 @@ export default function PurchaseOrdersView() {
       </Card>
 
       <Card>
+        <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Space wrap>
+            <div style={{ minWidth: 260 }}>
+              <Typography.Text strong>Doc No</Typography.Text>
+              <Input value={filterDocNo} onChange={(e) => setFilterDocNo(e.target.value)} placeholder="Search document no" />
+            </div>
+
+            <div style={{ minWidth: 220 }}>
+              <Typography.Text strong>Status</Typography.Text>
+              <Select
+                allowClear
+                placeholder="All"
+                value={filterStatus ?? undefined}
+                options={[
+                  { value: 'DRAFTED', label: 'DRAFTED' },
+                  { value: 'APPROVED', label: 'APPROVED' },
+                  { value: 'PARTIALLY_COMPLETED', label: 'PARTIALLY_COMPLETED' },
+                  { value: 'COMPLETED', label: 'COMPLETED' },
+                  { value: 'VOIDED', label: 'VOIDED' }
+                ]}
+                style={{ width: '100%' }}
+                onChange={(v) => setFilterStatus(v ?? null)}
+              />
+            </div>
+
+            <div style={{ minWidth: 280 }}>
+              <Typography.Text strong>Vendor</Typography.Text>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                placeholder="All"
+                value={filterVendorId ?? undefined}
+                options={vendorOptions}
+                style={{ width: '100%' }}
+                onChange={(v) => setFilterVendorId(v ?? null)}
+              />
+            </div>
+
+            <div style={{ minWidth: 320 }}>
+              <Typography.Text strong>Order Date</Typography.Text>
+              <DatePicker.RangePicker style={{ width: '100%' }} value={filterDateRange} onChange={(v) => setFilterDateRange(v)} />
+            </div>
+          </Space>
+
+          <Space wrap>
+            <Tag>Rows: {summary.count}</Tag>
+            <Tag color="blue">Total: {summary.grandTotal.toLocaleString()}</Tag>
+            <Button
+              onClick={() => {
+                setFilterDocNo('')
+                setFilterStatus(null)
+                setFilterVendorId(null)
+                setFilterDateRange(null)
+              }}
+            >
+              Reset Filters
+            </Button>
+          </Space>
+        </Space>
+      </Card>
+
+      <Card>
         <Table<PurchaseOrderRow>
           rowKey="id"
           loading={loading}
           columns={columns}
-          dataSource={rows}
+          dataSource={filteredRows}
           pagination={{ pageSize: 10 }}
           expandable={{
             expandedRowRender: (r) => (
@@ -739,7 +854,7 @@ export default function PurchaseOrdersView() {
                 allowClear
                 loading={orgLoading}
                 placeholder="No org"
-                options={orgs.map((o) => ({ value: o.id, label: `${o.code || o.id} - ${o.name || ''}` }))}
+                options={orgOptions}
               />
             </Form.Item>
 

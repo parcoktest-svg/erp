@@ -61,6 +61,11 @@ export default function SalesOrdersView() {
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<SalesOrderRow[]>([])
 
+  const [filterDocNo, setFilterDocNo] = useState<string>('')
+  const [filterStatus, setFilterStatus] = useState<string | null>(null)
+  const [filterCustomerId, setFilterCustomerId] = useState<number | null>(null)
+  const [filterDateRange, setFilterDateRange] = useState<any>(null)
+
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
@@ -230,6 +235,43 @@ export default function SalesOrdersView() {
     () => (customers || []).map((c: any) => ({ label: c.name || c.code || String(c.id), value: c.id })),
     [customers]
   )
+
+  const filteredRows = useMemo(() => {
+    const docQ = String(filterDocNo || '').trim().toLowerCase()
+    const statusQ = filterStatus ? String(filterStatus) : ''
+    const custId = filterCustomerId
+    const start = filterDateRange?.[0] ? dayjs(filterDateRange[0]).startOf('day') : null
+    const end = filterDateRange?.[1] ? dayjs(filterDateRange[1]).endOf('day') : null
+
+    return (rows || []).filter((r: any) => {
+      if (docQ) {
+        const dn = String(r?.documentNo || '').toLowerCase()
+        if (!dn.includes(docQ)) return false
+      }
+      if (statusQ) {
+        if (String(r?.status || '') !== statusQ) return false
+      }
+      if (custId != null) {
+        if (Number((r as any)?.businessPartnerId) !== Number(custId)) return false
+      }
+      if (start || end) {
+        const od = r?.orderDate ? dayjs(r.orderDate) : null
+        if (!od) return false
+        if (start && od.isBefore(start)) return false
+        if (end && od.isAfter(end)) return false
+      }
+      return true
+    })
+  }, [filterCustomerId, filterDateRange, filterDocNo, filterStatus, rows])
+
+  const summary = useMemo(() => {
+    const list = filteredRows || []
+    const total = list.reduce((acc: number, r: any) => acc + (Number(r?.grandTotal) || 0), 0)
+    return {
+      count: list.length,
+      grandTotal: total
+    }
+  }, [filteredRows])
 
   const plvOptions = useMemo(
     () => (priceListVersions || []).map((p: any) => ({ label: p.name || p.code || String(p.id), value: p.id })),
@@ -1014,7 +1056,70 @@ export default function SalesOrdersView() {
       </Card>
 
       <Card>
-        {!companyId ? <Tag color="orange">Pilih company dulu.</Tag> : <Table rowKey="id" dataSource={rows} columns={columns} loading={loading} />}
+        <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Space wrap>
+            <div style={{ minWidth: 260 }}>
+              <Typography.Text strong>Doc No</Typography.Text>
+              <Input value={filterDocNo} onChange={(e) => setFilterDocNo(e.target.value)} placeholder="Search document no" />
+            </div>
+
+            <div style={{ minWidth: 220 }}>
+              <Typography.Text strong>Status</Typography.Text>
+              <Select
+                allowClear
+                placeholder="All"
+                value={filterStatus ?? undefined}
+                options={[
+                  { value: 'DRAFTED', label: 'DRAFTED' },
+                  { value: 'APPROVED', label: 'APPROVED' },
+                  { value: 'PARTIALLY_COMPLETED', label: 'PARTIALLY_COMPLETED' },
+                  { value: 'COMPLETED', label: 'COMPLETED' },
+                  { value: 'VOIDED', label: 'VOIDED' }
+                ]}
+                style={{ width: '100%' }}
+                onChange={(v) => setFilterStatus(v ?? null)}
+              />
+            </div>
+
+            <div style={{ minWidth: 280 }}>
+              <Typography.Text strong>Customer</Typography.Text>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                placeholder="All"
+                value={filterCustomerId ?? undefined}
+                options={customerOptions}
+                style={{ width: '100%' }}
+                onChange={(v) => setFilterCustomerId(v ?? null)}
+              />
+            </div>
+
+            <div style={{ minWidth: 320 }}>
+              <Typography.Text strong>Order Date</Typography.Text>
+              <DatePicker.RangePicker style={{ width: '100%' }} value={filterDateRange} onChange={(v) => setFilterDateRange(v)} />
+            </div>
+          </Space>
+
+          <Space wrap>
+            <Tag>Rows: {summary.count}</Tag>
+            <Tag color="blue">Total: {summary.grandTotal.toLocaleString()}</Tag>
+            <Button
+              onClick={() => {
+                setFilterDocNo('')
+                setFilterStatus(null)
+                setFilterCustomerId(null)
+                setFilterDateRange(null)
+              }}
+            >
+              Reset Filters
+            </Button>
+          </Space>
+        </Space>
+      </Card>
+
+      <Card>
+        {!companyId ? <Tag color="orange">Pilih company dulu.</Tag> : <Table rowKey="id" dataSource={filteredRows} columns={columns} loading={loading} />}
       </Card>
 
       <Modal

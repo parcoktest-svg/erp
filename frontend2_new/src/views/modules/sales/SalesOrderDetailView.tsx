@@ -1,11 +1,11 @@
-import { Button, Card, DatePicker, Descriptions, Form, Input, InputNumber, Modal, Select, Space, Table, Tabs, Typography, message } from 'antd'
+import { Button, Card, DatePicker, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tabs, Typography, Upload, message } from 'antd'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import PageHeader from '@/components/PageHeader'
 import StatusBadge from '@/components/StatusBadge'
 import DataTable from '@/components/DataTable'
-import { financeApi, inventoryApi, manufacturingApi, masterDataApi, salesApi } from '@/utils/api'
+import { coreApi, financeApi, inventoryApi, manufacturingApi, masterDataApi, salesApi } from '@/utils/api'
 import { useContextStore } from '@/stores/context'
 import { getApiErrorMessage } from '@/utils/error'
 
@@ -22,6 +22,18 @@ type SalesOrderRow = {
   grandTotal?: any
   lines?: any[]
   deliverySchedules?: any[]
+}
+
+type AttachmentRow = {
+  id: number
+  companyId?: number
+  refType?: string
+  refId?: number
+  name?: string
+  originalFileName?: string
+  contentType?: string
+  sizeBytes?: number
+  createdAt?: string
 }
 
 export default function SalesOrderDetailView() {
@@ -54,11 +66,32 @@ export default function SalesOrderDetailView() {
   const [shipments, setShipments] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
 
+  const [attachments, setAttachments] = useState<AttachmentRow[]>([])
+  const [attachOpen, setAttachOpen] = useState(false)
+  const [attachForm] = Form.useForm()
+
+  const [attachRefType, setAttachRefType] = useState<string>('SALES_ORDER')
+  const [attachRefId, setAttachRefId] = useState<number | null>(null)
+  const [attachLoading, setAttachLoading] = useState(false)
+
   const [approveLoading, setApproveLoading] = useState(false)
 
   const [shipOpen, setShipOpen] = useState(false)
   const [shipSaving, setShipSaving] = useState(false)
   const [shipForm] = Form.useForm()
+
+  const [shipResultOpen, setShipResultOpen] = useState(false)
+  const [createdShipmentMovement, setCreatedShipmentMovement] = useState<any | null>(null)
+  const [shipCompleting, setShipCompleting] = useState(false)
+
+  const [shipmentRowCompletingId, setShipmentRowCompletingId] = useState<number | null>(null)
+
+  const [invoiceRowCompletingId, setInvoiceRowCompletingId] = useState<number | null>(null)
+  const [invoiceVoidOpen, setInvoiceVoidOpen] = useState(false)
+  const [invoiceVoiding, setInvoiceVoiding] = useState(false)
+  const [invoiceVoidId, setInvoiceVoidId] = useState<number | null>(null)
+  const [invoiceVoidForm] = Form.useForm()
+
   const [locatorOptionsLoading, setLocatorOptionsLoading] = useState(false)
   const [locatorOptions, setLocatorOptions] = useState<any[]>([])
 
@@ -189,6 +222,19 @@ export default function SalesOrderDetailView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, id])
 
+  const loadAttachments = async (cid: number, refType: string, refId: number) => {
+    setAttachLoading(true)
+    try {
+      const res = await coreApi.listAttachments(cid, { refType, refId })
+      setAttachments((res || []) as AttachmentRow[])
+    } catch (e: any) {
+      message.error(getApiErrorMessage(e, 'Failed to load attachments'))
+      setAttachments([])
+    } finally {
+      setAttachLoading(false)
+    }
+  }
+
   const bomByLineId = useMemo(() => {
     const m = new Map<number, any>()
     for (const b of bomRows || []) {
@@ -245,6 +291,96 @@ export default function SalesOrderDetailView() {
     { title: 'Remark', dataIndex: 'remark' }
   ]
 
+  const attachmentColumns = useMemo(
+    () => [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        render: (_: any, r: AttachmentRow) => (
+          <Typography.Text>{r?.name || r?.originalFileName || String(r?.id)}</Typography.Text>
+        )
+      },
+      { title: 'File', dataIndex: 'originalFileName' },
+      {
+        title: 'Size',
+        dataIndex: 'sizeBytes',
+        width: 120,
+        align: 'right' as const,
+        render: (v: any) => (v == null ? '-' : Number(v).toLocaleString())
+      },
+      { title: 'Created At', dataIndex: 'createdAt', width: 180 },
+      {
+        title: 'Action',
+        key: 'action',
+        width: 160,
+        render: (_: any, r: AttachmentRow) => (
+          <Space>
+            <Button
+              size="small"
+              type="link"
+              onClick={async () => {
+                if (!companyId || !r?.id) return
+                try {
+                  const res = await coreApi.downloadAttachment(companyId, r.id)
+                  const blobUrl = URL.createObjectURL(res.data)
+                  const a = document.createElement('a')
+                  a.href = blobUrl
+                  a.download = String(r.originalFileName || `attachment-${r.id}`)
+                  document.body.appendChild(a)
+                  a.click()
+                  a.remove()
+                  URL.revokeObjectURL(blobUrl)
+                } catch (e: any) {
+                  message.error(getApiErrorMessage(e, 'Failed to download attachment'))
+                }
+              }}
+            >
+              Download
+            </Button>
+            <Button
+              size="small"
+              danger
+              onClick={async () => {
+                if (!companyId || !r?.id || attachRefId == null) return
+                try {
+                  await coreApi.deleteAttachment(companyId, r.id)
+                  message.success('Attachment removed')
+                  await loadAttachments(companyId, attachRefType, attachRefId)
+                } catch (e: any) {
+                  message.error(getApiErrorMessage(e, 'Failed to remove attachment'))
+                }
+              }}
+            >
+              Remove
+            </Button>
+          </Space>
+        )
+      }
+    ],
+    [attachRefId, attachRefType, companyId]
+  )
+
+  const attachmentTargets = useMemo(() => {
+    const soId = Number(id)
+    const opts: { label: string; value: string }[] = []
+    if (soId) opts.push({ label: `Sales Order (Header)`, value: `SALES_ORDER:${soId}` })
+    for (const ln of so?.lines || []) {
+      if (!ln?.id) continue
+      const label = ln?.productId ? `SO Line ${ln.id} (Product ${ln.productId})` : `SO Line ${ln.id}`
+      opts.push({ label, value: `SALES_ORDER_LINE:${ln.id}` })
+    }
+    return opts
+  }, [id, so?.lines])
+
+  useEffect(() => {
+    const soId = Number(id)
+    if (!companyId || !soId) return
+    setAttachRefType('SALES_ORDER')
+    setAttachRefId(soId)
+    void loadAttachments(companyId, 'SALES_ORDER', soId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, id])
+
   const scheduleColumns = [
     { title: 'Delivery Date', dataIndex: 'deliveryDate', width: 140 },
     { title: 'Ship Mode', dataIndex: 'shipMode', width: 140 },
@@ -253,19 +389,137 @@ export default function SalesOrderDetailView() {
   ]
 
   const shipmentColumns = [
-    { title: 'Document No', dataIndex: 'documentNo', width: 180 },
+    {
+      title: 'Document No',
+      dataIndex: 'documentNo',
+      width: 180,
+      render: (v: any) => (
+        <Button
+          type="link"
+          style={{ padding: 0 }}
+          onClick={() => {
+            if (!v) return
+            navigate(`/modules/inventory/movements?q=${encodeURIComponent(String(v))}`)
+          }}
+        >
+          {v}
+        </Button>
+      )
+    },
     { title: 'Status', dataIndex: 'status', width: 140 },
     { title: 'Type', dataIndex: 'movementType', width: 100 },
     { title: 'Date', dataIndex: 'movementDate', width: 120 },
-    { title: 'Description', dataIndex: 'description' }
+    { title: 'Description', dataIndex: 'description' },
+    {
+      title: 'Action',
+      key: 'action',
+      width: 120,
+      render: (_: any, r: any) => (
+        <Button
+          size="small"
+          type="link"
+          loading={shipmentRowCompletingId != null && String(shipmentRowCompletingId) === String(r?.id)}
+          disabled={String(r?.status || '') !== 'DRAFTED'}
+          onClick={async () => {
+            if (!companyId || !so?.id || !r?.id) return
+            try {
+              setShipmentRowCompletingId(Number(r.id))
+              await inventoryApi.completeMovement(companyId, r.id)
+              message.success('Shipment completed')
+              await load(companyId, so.id)
+              await loadDocuments(companyId, so.id)
+            } catch (e: any) {
+              message.error(getApiErrorMessage(e, 'Failed to complete shipment'))
+            } finally {
+              setShipmentRowCompletingId(null)
+            }
+          }}
+        >
+          Complete
+        </Button>
+      )
+    }
   ]
 
   const invoiceColumns = [
-    { title: 'Document No', dataIndex: 'documentNo', width: 180 },
+    {
+      title: 'Document No',
+      dataIndex: 'documentNo',
+      width: 180,
+      render: (v: any) => (
+        <Button
+          type="link"
+          style={{ padding: 0 }}
+          onClick={() => {
+            if (!v) return
+            navigate(`/modules/finance/invoices?q=${encodeURIComponent(String(v))}`)
+          }}
+        >
+          {v}
+        </Button>
+      )
+    },
     { title: 'Type', dataIndex: 'invoiceType', width: 90 },
     { title: 'Status', dataIndex: 'status', width: 120 },
     { title: 'Date', dataIndex: 'invoiceDate', width: 120 },
-    { title: 'Grand Total', dataIndex: 'grandTotal', width: 140, align: 'right' as const, render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) }
+    { title: 'Grand Total', dataIndex: 'grandTotal', width: 140, align: 'right' as const, render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
+    {
+      title: 'Action',
+      key: 'action',
+      width: 170,
+      render: (_: any, r: any) => {
+        const status = String(r?.status || '')
+        const canComplete = status === 'DRAFTED'
+        const canVoid = status !== 'VOIDED'
+        return (
+          <Space size={8}>
+            <Popconfirm
+              title="Complete this invoice?"
+              okText="Complete"
+              cancelText="Cancel"
+              disabled={!companyId || !so?.id || !r?.id || !canComplete}
+              onConfirm={async () => {
+                if (!companyId || !so?.id || !r?.id) return
+                try {
+                  setInvoiceRowCompletingId(Number(r.id))
+                  await financeApi.completeInvoice(companyId, r.id)
+                  message.success('Invoice completed')
+                  await load(companyId, so.id)
+                  await loadDocuments(companyId, so.id)
+                } catch (e: any) {
+                  message.error(getApiErrorMessage(e, 'Failed to complete invoice'))
+                } finally {
+                  setInvoiceRowCompletingId(null)
+                }
+              }}
+            >
+              <Button
+                size="small"
+                type="primary"
+                loading={invoiceRowCompletingId != null && String(invoiceRowCompletingId) === String(r?.id)}
+                disabled={!companyId || !so?.id || !r?.id || !canComplete}
+              >
+                Complete
+              </Button>
+            </Popconfirm>
+
+            <Button
+              size="small"
+              danger
+              disabled={!companyId || !so?.id || !r?.id || !canVoid}
+              onClick={() => {
+                setInvoiceVoidId(Number(r.id))
+                invoiceVoidForm.resetFields()
+                invoiceVoidForm.setFieldsValue({ voidDate: dayjs(), reason: '' })
+                setInvoiceVoidOpen(true)
+              }}
+            >
+              Void
+            </Button>
+          </Space>
+        )
+      }
+    }
   ]
 
   return (
@@ -544,7 +798,55 @@ export default function SalesOrderDetailView() {
                   </Card>
 
                   <Card size="small" title="Invoices" loading={docsLoading}>
-                    <DataTable rowKey={(r: any) => r.id} dataSource={invoices} columns={invoiceColumns} pagination={{ pageSize: 5 }} />
+                    <Table size="small" rowKey={(r: any) => String(r?.id)} dataSource={invoices} loading={docsLoading} columns={invoiceColumns as any} />
+                  </Card>
+
+                  <Card>
+                    <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+                      <div>
+                        <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 0 }}>
+                          Attachments
+                        </Typography.Title>
+                        <Typography.Text type="secondary">Upload/download attachment (Option B).</Typography.Text>
+                      </div>
+                      <Space wrap>
+                        <Select
+                          value={attachRefId != null ? `${attachRefType}:${attachRefId}` : undefined}
+                          style={{ width: 320, maxWidth: '100%' }}
+                          options={attachmentTargets}
+                          onChange={(v) => {
+                            const parts = String(v || '').split(':')
+                            const rt = parts[0]
+                            const rid = Number(parts[1])
+                            if (!rt || !rid || !companyId) return
+                            setAttachRefType(rt)
+                            setAttachRefId(rid)
+                            void loadAttachments(companyId, rt, rid)
+                          }}
+                        />
+                        <Button
+                          onClick={() => {
+                            attachForm.resetFields()
+                            attachForm.setFieldsValue({ name: '' })
+                            setAttachOpen(true)
+                          }}
+                          disabled={!companyId || attachRefId == null}
+                        >
+                          Upload
+                        </Button>
+                      </Space>
+                    </Space>
+
+                    <div style={{ marginTop: 12 }}>
+                      <Table
+                        size="small"
+                        loading={attachLoading}
+                        rowKey={(r: AttachmentRow) => String(r.id)}
+                        dataSource={attachments}
+                        columns={attachmentColumns as any}
+                        pagination={false}
+                      />
+                    </div>
                   </Card>
                 </Space>
               )
@@ -552,6 +854,47 @@ export default function SalesOrderDetailView() {
           ]}
         />
       </Card>
+
+      <Modal
+        open={attachOpen}
+        title="Upload Attachment"
+        okText="Close"
+        onCancel={() => setAttachOpen(false)}
+        onOk={() => setAttachOpen(false)}
+        destroyOnClose
+      >
+        <Form layout="vertical" form={attachForm}>
+          <Form.Item name="name" label="Name (optional)">
+            <Input placeholder="e.g. Customer PO" />
+          </Form.Item>
+
+          <Form.Item label="File">
+            <Upload
+              maxCount={1}
+              showUploadList={false}
+              customRequest={async (opts) => {
+                if (!companyId || attachRefId == null) {
+                  ;(opts as any).onError?.(new Error('Company/Ref is required'))
+                  return
+                }
+                try {
+                  const v = await attachForm.validateFields()
+                  const file = (opts as any).file as File
+                  await coreApi.uploadAttachment(companyId, { refType: attachRefType, refId: attachRefId, name: v.name || undefined }, file)
+                  message.success('Uploaded')
+                  ;(opts as any).onSuccess?.({}, (opts as any).file)
+                  await loadAttachments(companyId, attachRefType, attachRefId)
+                } catch (e: any) {
+                  ;(opts as any).onError?.(e)
+                  message.error(getApiErrorMessage(e, 'Upload failed'))
+                }
+              }}
+            >
+              <Button disabled={!companyId || attachRefId == null}>Select File</Button>
+            </Upload>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         open={shipOpen}
@@ -589,6 +932,8 @@ export default function SalesOrderDetailView() {
 
             const movement = await salesApi.createGoodsShipment(companyId, so.id, payload)
             message.success(`Created Goods Shipment ${movement?.documentNo || ''}`.trim())
+            setCreatedShipmentMovement(movement)
+            setShipResultOpen(true)
             setShipOpen(false)
             await load(companyId, so.id)
             await loadDocuments(companyId, so.id)
@@ -662,6 +1007,111 @@ export default function SalesOrderDetailView() {
             )}
           </Form.List>
         </Form>
+      </Modal>
+
+      <Modal
+        open={invoiceVoidOpen}
+        title="Void Invoice"
+        okText="Void"
+        okButtonProps={{ danger: true }}
+        confirmLoading={invoiceVoiding}
+        onCancel={() => {
+          setInvoiceVoidOpen(false)
+          setInvoiceVoidId(null)
+        }}
+        onOk={async () => {
+          if (!companyId || !so?.id) {
+            message.error('Company is required')
+            return
+          }
+          if (invoiceVoidId == null) {
+            message.error('Invoice id is missing')
+            return
+          }
+          try {
+            setInvoiceVoiding(true)
+            const v = await invoiceVoidForm.validateFields()
+            await financeApi.voidInvoice(companyId, invoiceVoidId, {
+              voidDate: v.voidDate ? dayjs(v.voidDate).format('YYYY-MM-DD') : null,
+              reason: v.reason || null
+            })
+            message.success('Invoice voided')
+            setInvoiceVoidOpen(false)
+            setInvoiceVoidId(null)
+            await load(companyId, so.id)
+            await loadDocuments(companyId, so.id)
+          } catch (e: any) {
+            if (e?.errorFields) {
+              message.error('Please complete required fields')
+              return
+            }
+            message.error(getApiErrorMessage(e, 'Failed to void invoice'))
+          } finally {
+            setInvoiceVoiding(false)
+          }
+        }}
+        destroyOnClose
+      >
+        <Form layout="vertical" form={invoiceVoidForm}>
+          <Form.Item name="voidDate" label="Void Date" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="reason" label="Reason">
+            <Input />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={shipResultOpen}
+        title="Shipment Created"
+        footer={
+          <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
+            <Button
+              type="primary"
+              loading={shipCompleting}
+              disabled={!companyId || !createdShipmentMovement?.id || String(createdShipmentMovement?.status || '') !== 'DRAFTED'}
+              onClick={async () => {
+                if (!companyId || !createdShipmentMovement?.id) return
+                try {
+                  setShipCompleting(true)
+                  await inventoryApi.completeMovement(companyId, createdShipmentMovement.id)
+                  message.success('Shipment completed')
+                  setShipResultOpen(false)
+                  setCreatedShipmentMovement(null)
+                  await load(companyId, so?.id as any)
+                  await loadDocuments(companyId, so?.id as any)
+                } catch (e: any) {
+                  message.error(getApiErrorMessage(e, 'Failed to complete shipment'))
+                } finally {
+                  setShipCompleting(false)
+                }
+              }}
+            >
+              Complete Now
+            </Button>
+            <Button
+              onClick={() => {
+                setShipResultOpen(false)
+                setCreatedShipmentMovement(null)
+              }}
+            >
+              Close
+            </Button>
+          </Space>
+        }
+        onCancel={() => {
+          setShipResultOpen(false)
+          setCreatedShipmentMovement(null)
+        }}
+        destroyOnClose
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text>
+            Document No: <b>{createdShipmentMovement?.documentNo || '-'}</b>
+          </Typography.Text>
+          <Typography.Text type="secondary">Status: {createdShipmentMovement?.status || '-'}</Typography.Text>
+        </Space>
       </Modal>
 
       <Modal

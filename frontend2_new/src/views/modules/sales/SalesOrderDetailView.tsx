@@ -51,6 +51,17 @@ export default function SalesOrderDetailView() {
   const [masterBomLoading, setMasterBomLoading] = useState(false)
   const [masterBoms, setMasterBoms] = useState<any[]>([])
 
+  const [bomProductId, setBomProductId] = useState<number | null>(null)
+
+  const [bomEditOpen, setBomEditOpen] = useState(false)
+  const [bomEditSaving, setBomEditSaving] = useState(false)
+  const [bomEditRows, setBomEditRows] = useState<any[]>([])
+
+  const [bomProductsLoading, setBomProductsLoading] = useState(false)
+  const [bomAllProducts, setBomAllProducts] = useState<any[]>([])
+  const [bomCurrenciesLoading, setBomCurrenciesLoading] = useState(false)
+  const [bomCurrencies, setBomCurrencies] = useState<any[]>([])
+
   const [applyOpen, setApplyOpen] = useState(false)
   const [applyLineId, setApplyLineId] = useState<number | null>(null)
   const [applyBomId, setApplyBomId] = useState<number | null>(null)
@@ -105,6 +116,11 @@ export default function SalesOrderDetailView() {
   const [voidSaving, setVoidSaving] = useState(false)
   const [voidForm] = Form.useForm()
 
+  const bomCurrencyOptions = useMemo(
+    () => (bomCurrencies || []).map((c: any) => ({ value: c.id, label: `${c.code || c.id} - ${c.name || ''}`.trim() })),
+    [bomCurrencies]
+  )
+
   const load = async (cid: number, soId: number) => {
     setLoading(true)
     try {
@@ -134,6 +150,105 @@ export default function SalesOrderDetailView() {
       setTaxRateOptions([])
     } finally {
       setTaxRateOptionsLoading(false)
+    }
+  }
+
+  const loadBomEditorLookups = async (cid: number) => {
+    setBomProductsLoading(true)
+    setBomCurrenciesLoading(true)
+    try {
+      const [prods, curs] = await Promise.all([
+        masterDataApi.listProducts(cid),
+        masterDataApi.listCurrencies(cid)
+      ])
+      setBomAllProducts((prods || []) as any[])
+      setBomCurrencies((curs || []) as any[])
+    } catch (e: any) {
+      message.error(getApiErrorMessage(e, 'Failed to load BOM editor lookups'))
+    } finally {
+      setBomProductsLoading(false)
+      setBomCurrenciesLoading(false)
+    }
+  }
+
+  const openBomEditor = async () => {
+    if (!companyId || !so?.id) return
+    if (!bomSelectedLineMeta?.id) {
+      message.error('Finished goods line is missing')
+      return
+    }
+    if (String(so?.status || '') !== 'DRAFTED') {
+      message.error('Only allowed while Sales Order is DRAFTED')
+      return
+    }
+    if (!bomAllProducts.length || !bomCurrencies.length) {
+      await loadBomEditorLookups(companyId)
+    }
+
+    const existing = (bomSnapshotForSelectedProduct?.lines || []) as any[]
+    setBomEditRows(
+      (existing || []).map((r: any) => ({
+        componentProductId: r.componentProductId ?? null,
+        qty: r.qty ?? null,
+        bomCode: r.bomCode ?? null,
+        description1: r.description1 ?? null,
+        colorDescription2: r.colorDescription2 ?? null,
+        unit: r.unit ?? null,
+        unitPriceForeign: r.unitPriceForeign ?? null,
+        unitPriceDomestic: r.unitPriceDomestic ?? null,
+        yy: r.yy ?? null,
+        exchangeRate: r.exchangeRate ?? null,
+        amountForeign: r.amountForeign ?? null,
+        amountDomestic: r.amountDomestic ?? null,
+        currencyId: r.currencyId ?? null
+      }))
+    )
+
+    setBomEditOpen(true)
+  }
+
+  const saveBomEditor = async () => {
+    if (!companyId || !so?.id) return
+    if (!bomSelectedLineMeta?.id) return
+
+    const validRows = (bomEditRows || [])
+      .map((r: any) => ({
+        componentProductId: r.componentProductId != null ? Number(r.componentProductId) : null,
+        qty: r.qty != null ? Number(r.qty) : null,
+        bomCode: r.bomCode || null,
+        description1: r.description1 || null,
+        colorDescription2: r.colorDescription2 || null,
+        unit: r.unit || null,
+        unitPriceForeign: r.unitPriceForeign != null ? Number(r.unitPriceForeign) : null,
+        unitPriceDomestic: r.unitPriceDomestic != null ? Number(r.unitPriceDomestic) : null,
+        yy: r.yy != null ? Number(r.yy) : null,
+        exchangeRate: r.exchangeRate != null ? Number(r.exchangeRate) : null,
+        amountForeign: r.amountForeign != null ? Number(r.amountForeign) : null,
+        amountDomestic: r.amountDomestic != null ? Number(r.amountDomestic) : null,
+        currencyId: r.currencyId != null ? Number(r.currencyId) : null
+      }))
+      .filter((r: any) => r.componentProductId != null && r.qty != null && r.qty > 0)
+
+    if (!validRows.length) {
+      message.error('Please add at least 1 row with Component and Qty > 0')
+      return
+    }
+
+    setBomEditSaving(true)
+    try {
+      await salesApi.setSalesOrderLineBom(companyId, so.id, {
+        salesOrderLineId: Number(bomSelectedLineMeta.id),
+        sourceBomId: null,
+        sourceBomVersion: null,
+        lines: validRows
+      })
+      message.success('BOM saved')
+      await loadBoms(companyId, so.id)
+      setBomEditOpen(false)
+    } catch (e: any) {
+      message.error(getApiErrorMessage(e, 'Failed to save BOM'))
+    } finally {
+      setBomEditSaving(false)
     }
   }
 
@@ -244,6 +359,49 @@ export default function SalesOrderDetailView() {
     }
     return m
   }, [bomRows])
+
+  const bomProductOptions = useMemo(() => {
+    const map = new Map<string, { productId: number; label: string }>()
+    for (const ln of (so?.lines || []) as any[]) {
+      const pid = Number(ln?.productId)
+      if (!pid) continue
+      if (!map.has(String(pid))) {
+        const label = ln?.style ? `Product ${pid} (${String(ln.style)})` : `Product ${pid}`
+        map.set(String(pid), { productId: pid, label })
+      }
+    }
+    return Array.from(map.values()).map((x) => ({ value: x.productId, label: x.label }))
+  }, [so?.lines])
+
+  useEffect(() => {
+    if (bomProductId != null) return
+    const first = (so?.lines || []).find((l: any) => l?.productId != null)
+    if (first?.productId != null) setBomProductId(Number(first.productId))
+  }, [bomProductId, so?.lines])
+
+  const bomSnapshotForSelectedProduct = useMemo(() => {
+    if (bomProductId == null) return null
+    const lines = (so?.lines || []) as any[]
+    const firstLine = lines.find((l) => Number(l?.productId) === Number(bomProductId) && l?.id != null)
+    if (!firstLine?.id) return null
+    return bomByLineId.get(Number(firstLine.id)) || null
+  }, [bomByLineId, bomProductId, so?.lines])
+
+  const bomSelectedLineMeta = useMemo(() => {
+    if (bomProductId == null) return null
+    const lines = (so?.lines || []) as any[]
+    const firstLine = lines.find((l) => Number(l?.productId) === Number(bomProductId))
+    return firstLine || null
+  }, [bomProductId, so?.lines])
+
+  const bomRawMaterialRows = useMemo(() => {
+    const snap = bomSnapshotForSelectedProduct
+    const rows = (snap?.lines || []) as any[]
+    return rows.map((r, idx) => ({
+      ...r,
+      _rowKey: String(r?.id || `${r?.componentProductId || 'cmp'}-${idx}`)
+    }))
+  }, [bomSnapshotForSelectedProduct])
 
   const bomLineTableRows = useMemo(() => {
     const lines = (so?.lines || []) as any[]
@@ -688,7 +846,7 @@ export default function SalesOrderDetailView() {
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
                     <Typography.Text type="secondary">
-                      Approval requires BOM snapshot per line. Fill missing BOMs before approving.
+                      Approval requires BOM snapshot. Set BOM once per product (Finished Goods) before approving.
                     </Typography.Text>
                     <Space wrap>
                       <Button
@@ -713,61 +871,76 @@ export default function SalesOrderDetailView() {
                     </Space>
                   </Space>
 
-                  <DataTable
-                    rowKey={(r: any) => r.id}
-                    loading={bomLoading}
-                    dataSource={bomLineTableRows}
-                    expandable={{
-                      expandedRowRender: (r: any) => {
-                        const snap = r?.id ? bomByLineId.get(Number(r.id)) : null
-                        const lines = (snap?.lines || []) as any[]
-                        return (
-                          <DataTable
-                            rowKey={(x: any, index?: number) => String(x.id || `${x.componentProductId}-${index ?? 0}`)}
-                            pagination={false}
-                            dataSource={lines}
+                  <Card size="small" title="Finished Goods Assignment to BOM">
+                    <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Select
+                        style={{ width: 360, maxWidth: '100%' }}
+                        placeholder="Select finished goods"
+                        value={bomProductId ?? undefined}
+                        options={bomProductOptions}
+                        onChange={(v) => setBomProductId(Number(v))}
+                        showSearch
+                        optionFilterProp="label"
+                      />
+                      <Button
+                        onClick={() => {
+                          if (!bomSelectedLineMeta?.id) return
+                          setApplyLineId(Number(bomSelectedLineMeta.id))
+                          setApplyBomId(null)
+                          setApplyOpen(true)
+                        }}
+                        disabled={String(so?.status || '') !== 'DRAFTED' || !bomSelectedLineMeta?.id}
+                      >
+                        Apply Master BOM
+                      </Button>
+                    </Space>
+                  </Card>
+
+                  <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+                    <Typography.Text type="secondary">
+                      Manual edit will save as BOM snapshot for selected finished goods.
+                    </Typography.Text>
+                    <Button onClick={() => void openBomEditor()} disabled={String(so?.status || '') !== 'DRAFTED' || !bomSelectedLineMeta?.id}>
+                      Edit Raw Materials
+                    </Button>
+                  </Space>
+
+                  <Tabs
+                    items={[
+                      {
+                        key: 'raw',
+                        label: 'Raw Materials',
+                        children: (
+                          <Table
+                            size="small"
+                            rowKey={(r: any) => String(r?._rowKey)}
+                            loading={bomLoading}
+                            dataSource={bomRawMaterialRows}
+                            scroll={{ x: 1400 }}
+                            pagination={{ pageSize: 10 }}
                             columns={[
-                              { title: 'Component Product', dataIndex: 'componentProductId', width: 150 },
-                              { title: 'Qty', dataIndex: 'qty', width: 90, align: 'right' },
-                              { title: 'Unit', dataIndex: 'unit', width: 100 },
-                              { title: 'Description', dataIndex: 'description1' },
-                              { title: 'Color', dataIndex: 'colorDescription2', width: 160 }
-                            ]}
+                              { title: 'Finished Goods', dataIndex: 'finishedGoods', width: 140, render: () => (bomProductId == null ? '-' : `Product ${bomProductId}`) },
+                              { title: 'Style', dataIndex: 'style', width: 160, render: () => String(bomSelectedLineMeta?.style || '-') },
+                              { title: 'BOM Code', dataIndex: 'bomCode', width: 160 },
+                              { title: 'Description(1)', dataIndex: 'description1', width: 220 },
+                              { title: 'Color (Description(2))', dataIndex: 'colorDescription2', width: 180 },
+                              { title: 'Unit', dataIndex: 'unit', width: 90 },
+                              { title: 'Unit Price (Foreign)', dataIndex: 'unitPriceForeign', width: 150, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
+                              { title: 'Unit Price (Domestic)', dataIndex: 'unitPriceDomestic', width: 160, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
+                              { title: 'YY', dataIndex: 'yy', width: 90, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
+                              { title: 'Exchange Rate', dataIndex: 'exchangeRate', width: 140, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
+                              { title: 'Amount (Foreign)', dataIndex: 'amountForeign', width: 150, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
+                              { title: 'Amount (Domestic)', dataIndex: 'amountDomestic', width: 160, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
+                              { title: 'Currency', dataIndex: 'currencyId', width: 110, render: (v: any) => (v == null ? '-' : String(v)) }
+                            ] as any}
                           />
                         )
-                      }
-                    }}
-                    columns={[
-                      { title: 'Line ID', dataIndex: 'id', width: 90 },
-                      { title: 'Product', dataIndex: 'productId', width: 120 },
-                      { title: 'Style', dataIndex: 'style', width: 140 },
-                      { title: 'Color', dataIndex: 'color', width: 120 },
-                      { title: 'Size', dataIndex: 'size', width: 100 },
-                      {
-                        title: 'BOM Status',
-                        dataIndex: '_bomStatus',
-                        width: 120,
-                        render: (v: any) => (String(v) === 'READY' ? <Typography.Text type="success">READY</Typography.Text> : <Typography.Text type="danger">MISSING</Typography.Text>)
                       },
-                      { title: 'Source', dataIndex: '_bomSource', width: 200 },
                       {
-                        title: 'Action',
-                        key: 'action',
-                        width: 160,
-                        render: (_: any, r: any) => (
-                          <Button
-                            size="small"
-                            onClick={() => {
-                              const lineId = Number(r.id)
-                              if (!lineId) return
-                              setApplyLineId(lineId)
-                              setApplyBomId(null)
-                              setApplyOpen(true)
-                            }}
-                            disabled={String(so?.status || '') !== 'DRAFTED'}
-                          >
-                            Apply Master BOM
-                          </Button>
+                        key: 'fg',
+                        label: 'Finished Goods',
+                        children: (
+                          <Typography.Text type="secondary">Finished goods summary can be added here.</Typography.Text>
                         )
                       }
                     ]}
@@ -894,6 +1067,349 @@ export default function SalesOrderDetailView() {
             </Upload>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title={`Edit Raw Materials - Product ${bomProductId ?? ''}`.trim()}
+        open={bomEditOpen}
+        width={1200}
+        onCancel={() => {
+          setBomEditOpen(false)
+        }}
+        footer={
+          <Space>
+            <Button
+              onClick={() => {
+                setBomEditOpen(false)
+              }}
+              disabled={bomEditSaving}
+            >
+              Cancel
+            </Button>
+            <Button type="primary" onClick={() => void saveBomEditor()} loading={bomEditSaving}>
+              Save
+            </Button>
+          </Space>
+        }
+        destroyOnClose
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+            <Typography.Text type="secondary">
+              Component Product & Qty are required. This will apply to all Sales Order lines with the same product.
+            </Typography.Text>
+            <Button
+              onClick={() =>
+                setBomEditRows((prev) => [
+                  ...(prev || []),
+                  {
+                    componentProductId: null,
+                    qty: null,
+                    bomCode: null,
+                    description1: null,
+                    colorDescription2: null,
+                    unit: null,
+                    unitPriceForeign: null,
+                    unitPriceDomestic: null,
+                    yy: null,
+                    exchangeRate: null,
+                    amountForeign: null,
+                    amountDomestic: null,
+                    currencyId: null
+                  }
+                ])
+              }
+              disabled={bomEditSaving}
+            >
+              Add Row
+            </Button>
+          </Space>
+
+          <Table
+            size="small"
+            pagination={false}
+            rowKey={(_: any, i) => String(i)}
+            dataSource={bomEditRows}
+            scroll={{ x: 1600 }}
+            loading={bomProductsLoading || bomCurrenciesLoading}
+            columns={[
+              {
+                title: 'Component',
+                dataIndex: 'componentProductId',
+                width: 260,
+                render: (_: any, r: any, idx: number) => (
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="Select component"
+                    style={{ width: '100%' }}
+                    options={(bomAllProducts || []).map((p: any) => ({
+                      value: p.id,
+                      label: `${p.code || p.id} - ${p.name || ''}`.trim()
+                    }))}
+                    value={r.componentProductId ?? undefined}
+                    onChange={(v) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], componentProductId: v }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Qty',
+                dataIndex: 'qty',
+                width: 90,
+                render: (_: any, r: any, idx: number) => (
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    placeholder="0"
+                    value={r.qty ?? undefined}
+                    onChange={(v) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], qty: v }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'BOM Code',
+                dataIndex: 'bomCode',
+                width: 160,
+                render: (_: any, r: any, idx: number) => (
+                  <Input
+                    value={r.bomCode ?? ''}
+                    onChange={(e) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], bomCode: e.target.value }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Description(1)',
+                dataIndex: 'description1',
+                width: 200,
+                render: (_: any, r: any, idx: number) => (
+                  <Input
+                    value={r.description1 ?? ''}
+                    onChange={(e) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], description1: e.target.value }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Color Desc(2)',
+                dataIndex: 'colorDescription2',
+                width: 180,
+                render: (_: any, r: any, idx: number) => (
+                  <Input
+                    value={r.colorDescription2 ?? ''}
+                    onChange={(e) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], colorDescription2: e.target.value }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Unit',
+                dataIndex: 'unit',
+                width: 100,
+                render: (_: any, r: any, idx: number) => (
+                  <Input
+                    value={r.unit ?? ''}
+                    onChange={(e) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], unit: e.target.value }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Unit Price (Foreign)',
+                dataIndex: 'unitPriceForeign',
+                width: 150,
+                render: (_: any, r: any, idx: number) => (
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    placeholder="0"
+                    value={r.unitPriceForeign ?? undefined}
+                    onChange={(v) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], unitPriceForeign: v }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Unit Price (Domestic)',
+                dataIndex: 'unitPriceDomestic',
+                width: 160,
+                render: (_: any, r: any, idx: number) => (
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    placeholder="0"
+                    value={r.unitPriceDomestic ?? undefined}
+                    onChange={(v) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], unitPriceDomestic: v }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'YY',
+                dataIndex: 'yy',
+                width: 100,
+                render: (_: any, r: any, idx: number) => (
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    placeholder="0"
+                    value={r.yy ?? undefined}
+                    onChange={(v) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], yy: v }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Exchange Rate',
+                dataIndex: 'exchangeRate',
+                width: 140,
+                render: (_: any, r: any, idx: number) => (
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    placeholder="0"
+                    value={r.exchangeRate ?? undefined}
+                    onChange={(v) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], exchangeRate: v }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Amount (Foreign)',
+                dataIndex: 'amountForeign',
+                width: 150,
+                render: (_: any, r: any, idx: number) => (
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    placeholder="0"
+                    value={r.amountForeign ?? undefined}
+                    onChange={(v) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], amountForeign: v }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Amount (Domestic)',
+                dataIndex: 'amountDomestic',
+                width: 160,
+                render: (_: any, r: any, idx: number) => (
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    placeholder="0"
+                    value={r.amountDomestic ?? undefined}
+                    onChange={(v) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], amountDomestic: v }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Currency',
+                dataIndex: 'currencyId',
+                width: 140,
+                render: (_: any, r: any, idx: number) => (
+                  <Select
+                    placeholder="Select"
+                    style={{ width: '100%' }}
+                    options={bomCurrencyOptions}
+                    value={r.currencyId ?? undefined}
+                    onChange={(v) => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr[idx] = { ...arr[idx], currencyId: v }
+                        return arr
+                      })
+                    }}
+                  />
+                )
+              },
+              {
+                title: '',
+                key: 'act',
+                width: 80,
+                render: (_: any, __: any, idx: number) => (
+                  <Button
+                    danger
+                    size="small"
+                    onClick={() => {
+                      setBomEditRows((prev) => {
+                        const arr = [...(prev || [])]
+                        arr.splice(idx, 1)
+                        return arr
+                      })
+                    }}
+                    disabled={bomEditSaving}
+                  >
+                    Remove
+                  </Button>
+                )
+              }
+            ]}
+          />
+        </Space>
       </Modal>
 
       <Modal

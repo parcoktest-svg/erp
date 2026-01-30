@@ -1,5 +1,6 @@
 package com.erp.sales.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -63,14 +64,14 @@ public class SalesOrderBomService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Sales Order line not found"));
 
-        SalesOrderLineBom bomSnap = salesOrderLineBomRepository.findBySalesOrderLine_Id(sol.getId())
-                .orElseGet(SalesOrderLineBom::new);
+        if (sol.getProduct() == null || sol.getProduct().getId() == null) {
+            throw new IllegalArgumentException("Sales Order line product is required");
+        }
 
-        bomSnap.setSalesOrderLine(sol);
-        bomSnap.setSourceBomId(request.getSourceBomId());
-        bomSnap.setSourceBomVersion(request.getSourceBomVersion());
+        Long targetProductId = sol.getProduct().getId();
 
-        bomSnap.getLines().clear();
+        // Build template lines (detached) once, then apply to all lines with the same product.
+        List<SalesOrderLineBomLine> templateLines = new ArrayList<>();
 
         if (request.getSourceBomId() != null) {
             Bom master = bomRepository.findById(request.getSourceBomId())
@@ -88,12 +89,10 @@ public class SalesOrderBomService {
 
             for (BomLine l : master.getLines()) {
                 SalesOrderLineBomLine snapLine = new SalesOrderLineBomLine();
-                snapLine.setSalesOrderLineBom(bomSnap);
                 snapLine.setComponentProduct(l.getComponentProduct());
                 snapLine.setQty(l.getQty());
-                bomSnap.getLines().add(snapLine);
+                templateLines.add(snapLine);
             }
-            bomSnap.setSourceBomVersion(master.getVersion());
         } else if (request.getLines() != null) {
             for (SetSalesOrderLineBomRequest.SetSalesOrderLineBomLineRequest lineReq : request.getLines()) {
                 Product component = productRepository.findById(lineReq.getComponentProductId())
@@ -103,7 +102,6 @@ public class SalesOrderBomService {
                     throw new IllegalArgumentException("Component product company mismatch");
                 }
                 SalesOrderLineBomLine snapLine = new SalesOrderLineBomLine();
-                snapLine.setSalesOrderLineBom(bomSnap);
                 snapLine.setComponentProduct(component);
                 snapLine.setQty(lineReq.getQty());
                 snapLine.setBomCode(lineReq.getBomCode());
@@ -117,11 +115,61 @@ public class SalesOrderBomService {
                 snapLine.setAmountForeign(lineReq.getAmountForeign());
                 snapLine.setAmountDomestic(lineReq.getAmountDomestic());
                 snapLine.setCurrencyId(lineReq.getCurrencyId());
-                bomSnap.getLines().add(snapLine);
+                templateLines.add(snapLine);
             }
         }
 
-        return salesOrderLineBomRepository.save(bomSnap);
+        SalesOrderLineBom firstSaved = null;
+        for (SalesOrderLine l : (so.getLines() == null ? List.<SalesOrderLine>of() : so.getLines())) {
+            if (l == null || l.getId() == null || l.getProduct() == null || l.getProduct().getId() == null) continue;
+            if (!l.getProduct().getId().equals(targetProductId)) continue;
+
+            SalesOrderLineBom bomSnap = salesOrderLineBomRepository.findBySalesOrderLine_Id(l.getId())
+                    .orElseGet(SalesOrderLineBom::new);
+            bomSnap.setSalesOrderLine(l);
+            bomSnap.setSourceBomId(request.getSourceBomId());
+            bomSnap.setSourceBomVersion(request.getSourceBomId() != null ? null : request.getSourceBomVersion());
+
+            bomSnap.getLines().clear();
+            for (SalesOrderLineBomLine t : templateLines) {
+                SalesOrderLineBomLine newLine = new SalesOrderLineBomLine();
+                newLine.setSalesOrderLineBom(bomSnap);
+                newLine.setComponentProduct(t.getComponentProduct());
+                newLine.setQty(t.getQty());
+                newLine.setBomCode(t.getBomCode());
+                newLine.setDescription1(t.getDescription1());
+                newLine.setColorDescription2(t.getColorDescription2());
+                newLine.setUnit(t.getUnit());
+                newLine.setUnitPriceForeign(t.getUnitPriceForeign());
+                newLine.setUnitPriceDomestic(t.getUnitPriceDomestic());
+                newLine.setYy(t.getYy());
+                newLine.setExchangeRate(t.getExchangeRate());
+                newLine.setAmountForeign(t.getAmountForeign());
+                newLine.setAmountDomestic(t.getAmountDomestic());
+                newLine.setCurrencyId(t.getCurrencyId());
+                bomSnap.getLines().add(newLine);
+            }
+
+            if (request.getSourceBomId() != null) {
+                Bom master = bomRepository.findById(request.getSourceBomId())
+                        .orElseThrow(() -> new IllegalArgumentException("BOM not found"));
+                bomSnap.setSourceBomVersion(master.getVersion());
+            }
+
+            SalesOrderLineBom saved = salesOrderLineBomRepository.save(bomSnap);
+            if (firstSaved == null && saved.getSalesOrderLine() != null && saved.getSalesOrderLine().getId() != null
+                    && saved.getSalesOrderLine().getId().equals(sol.getId())) {
+                firstSaved = saved;
+            }
+        }
+
+        if (firstSaved == null) {
+            // fallback
+            firstSaved = salesOrderLineBomRepository.findBySalesOrderLine_Id(sol.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Failed to persist BOM snapshot"));
+        }
+
+        return firstSaved;
     }
 
     @Transactional

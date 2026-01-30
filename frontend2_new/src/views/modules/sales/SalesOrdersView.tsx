@@ -1229,18 +1229,11 @@ export default function SalesOrdersView() {
                             }}
                           />
                         </Form.Item>
-                        <Form.Item
-                          {...field}
-                          name={[field.name, 'productId']}
-                          label="Item Name"
-                          rules={[{ required: true }]}
-                          style={{ width: 420 }}
-                        >
+                        <Form.Item label="Item Name" style={{ width: 420 }}>
                           <Form.Item
                             noStyle
                             shouldUpdate={(prev, next) =>
-                              prev?.lines?.[field.name]?.itemType !== next?.lines?.[field.name]?.itemType ||
-                              prev?.lines?.[field.name]?.productId !== next?.lines?.[field.name]?.productId
+                              prev?.lines?.[field.name]?.itemType !== next?.lines?.[field.name]?.itemType
                             }
                           >
                             {() => {
@@ -1248,7 +1241,23 @@ export default function SalesOrdersView() {
                                 .trim()
                                 .toUpperCase()
                               const opts = productOptionsByItemType[t] || productOptionsByItemType.ALL || productOptions
-                              return <Select showSearch options={opts} optionFilterProp="label" placeholder="Selection" />
+
+                              return (
+                                <Form.Item
+                                  {...field}
+                                  name={[field.name, 'productId']}
+                                  rules={[{ required: true, message: 'Please enter Item Name' }]}
+                                  noStyle
+                                >
+                                  <Select
+                                    key={t}
+                                    showSearch
+                                    options={opts}
+                                    optionFilterProp="label"
+                                    placeholder="Selection"
+                                  />
+                                </Form.Item>
+                              )
                             }}
                           </Form.Item>
                         </Form.Item>

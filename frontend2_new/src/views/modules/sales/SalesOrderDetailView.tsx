@@ -116,10 +116,23 @@ export default function SalesOrderDetailView() {
   const [voidSaving, setVoidSaving] = useState(false)
   const [voidForm] = Form.useForm()
 
+  const [addLineOpen, setAddLineOpen] = useState(false)
+  const [addLineSaving, setAddLineSaving] = useState(false)
+  const [addLineForm] = Form.useForm()
+
   const bomCurrencyOptions = useMemo(
     () => (bomCurrencies || []).map((c: any) => ({ value: c.id, label: `${c.code || c.id} - ${c.name || ''}`.trim() })),
     [bomCurrencies]
   )
+
+  const toLocalDateString = (d: any) => {
+    if (!d) return null
+    try {
+      return dayjs(d).format('YYYY-MM-DD')
+    } catch {
+      return null
+    }
+  }
 
   const load = async (cid: number, soId: number) => {
     setLoading(true)
@@ -134,6 +147,22 @@ export default function SalesOrderDetailView() {
     }
 
   }
+
+  useEffect(() => {
+    if (!companyId) return
+    if (bomAllProducts.length) return
+    void (async () => {
+      setBomProductsLoading(true)
+      try {
+        const prods = await masterDataApi.listProducts(companyId)
+        setBomAllProducts((prods || []) as any[])
+      } catch (e: any) {
+        message.error(getApiErrorMessage(e, 'Failed to load products'))
+      } finally {
+        setBomProductsLoading(false)
+      }
+    })()
+  }, [bomAllProducts.length, companyId])
 
   const loadTaxRates = async (cid: number) => {
     setTaxRateOptionsLoading(true)
@@ -437,8 +466,26 @@ export default function SalesOrderDetailView() {
 
   const canVoid = !['VOIDED', 'COMPLETED', 'PARTIALLY_COMPLETED'].includes(String(so?.status || '')) && !hasShippedQty
 
+  const productLabelById = useMemo(() => {
+    const m = new Map<number, string>()
+    for (const p of (bomAllProducts || []) as any[]) {
+      const id = Number(p?.id)
+      if (!id) continue
+      m.set(id, `${p.code || p.id} - ${p.name || ''}`.trim())
+    }
+    return m
+  }, [bomAllProducts])
+
   const lineColumns = [
-    { title: 'Product', dataIndex: 'productId', width: 110 },
+    {
+      title: 'Item Name',
+      dataIndex: 'productId',
+      width: 220,
+      render: (v: any) => {
+        const id = Number(v)
+        return productLabelById.get(id) || (v == null ? '-' : String(v))
+      }
+    },
     { title: 'Qty', dataIndex: 'qty', width: 90, align: 'right' as const },
     { title: 'Style', dataIndex: 'style', width: 140 },
     { title: 'Color', dataIndex: 'color', width: 120 },
@@ -448,6 +495,73 @@ export default function SalesOrderDetailView() {
     { title: 'Factory', dataIndex: 'factory', width: 140 },
     { title: 'Remark', dataIndex: 'remark' }
   ]
+
+  const saveAddLine = async () => {
+    if (!companyId) {
+      message.error('Company not selected')
+      return
+    }
+    if (!so?.id) {
+      message.error('Sales Order not loaded')
+      return
+    }
+    if (String(so?.status || '') !== 'DRAFTED') {
+      message.error('Only allowed while Sales Order is DRAFTED')
+      return
+    }
+
+    setAddLineSaving(true)
+    try {
+      const values = await addLineForm.validateFields()
+      const existingLines = ((so as any)?.lines || []) as any[]
+
+      const payload: any = {
+        ...(so as any),
+        orderDate: (so as any)?.orderDate ?? null,
+        lines: [...existingLines, values].map((l: any) => ({
+          productId: l.productId,
+          qty: l.qty,
+          unitPrice: l.unitPrice ?? null,
+          description: l.description || null,
+          unit: l.unit || null,
+          size: l.size || null,
+          nationalSize: l.nationalSize || null,
+          style: l.style || null,
+          cuttingNo: l.cuttingNo || null,
+          color: l.color || null,
+          destination: l.destination || null,
+          supplyAmount: l.supplyAmount ?? null,
+          vatAmount: l.vatAmount ?? null,
+          fobPrice: l.fobPrice ?? null,
+          ldpPrice: l.ldpPrice ?? null,
+          dpPrice: l.dpPrice ?? null,
+          cmtCost: l.cmtCost ?? null,
+          cmCost: l.cmCost ?? null,
+          fabricEta: toLocalDateString(l.fabricEta),
+          fabricEtd: toLocalDateString(l.fabricEtd),
+          deliveryDate: toLocalDateString(l.deliveryDate),
+          shipMode: l.shipMode || null,
+          factory: l.factory || null,
+          remark: l.remark || null,
+          filePath: l.filePath || null
+        }))
+      }
+
+      await salesApi.updateSalesOrder(companyId, so.id, payload)
+      message.success('Item added')
+      setAddLineOpen(false)
+      await load(companyId, so.id)
+      await loadBoms(companyId, so.id)
+    } catch (e: any) {
+      if (e?.errorFields) {
+        message.error('Please complete required fields')
+      } else {
+        message.error(getApiErrorMessage(e, 'Failed to add item'))
+      }
+    } finally {
+      setAddLineSaving(false)
+    }
+  }
 
   const attachmentColumns = useMemo(
     () => [
@@ -826,7 +940,28 @@ export default function SalesOrderDetailView() {
             {
               key: 'lines',
               label: 'Lines',
-              children: <DataTable rowKey={(r: any) => r.id || `${r.productId}-${r.style}-${r.color}-${r.size}`} dataSource={so?.lines || []} columns={lineColumns} />
+              children: (
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                  <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                    <Button
+                      type="primary"
+                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                      onClick={() => {
+                        addLineForm.resetFields()
+                        addLineForm.setFieldsValue({ qty: 1 })
+                        setAddLineOpen(true)
+                      }}
+                    >
+                      Add Item
+                    </Button>
+                  </Space>
+                  <DataTable
+                    rowKey={(r: any) => r.id || `${r.productId}-${r.style}-${r.color}-${r.size}`}
+                    dataSource={so?.lines || []}
+                    columns={lineColumns}
+                  />
+                </Space>
+              )
             },
             {
               key: 'schedules',
@@ -1027,6 +1162,70 @@ export default function SalesOrderDetailView() {
           ]}
         />
       </Card>
+
+      <Modal
+        open={addLineOpen}
+        title="Add Item"
+        width={860}
+        onCancel={() => setAddLineOpen(false)}
+        footer={
+          <Space>
+            <Button onClick={() => setAddLineOpen(false)} disabled={addLineSaving}>
+              Cancel
+            </Button>
+            <Button type="primary" loading={addLineSaving} onClick={() => void saveAddLine()}>
+              OK
+            </Button>
+          </Space>
+        }
+        destroyOnClose
+      >
+        <Form layout="vertical" form={addLineForm}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+            <Form.Item label="Item Name" name="productId" rules={[{ required: true, message: 'Please enter Item Name' }]}>
+              <Select
+                showSearch
+                optionFilterProp="label"
+                placeholder="Selection"
+                options={(bomAllProducts || []).map((p: any) => ({
+                  value: p.id,
+                  label: `${p.code || p.id} - ${p.name || ''}`.trim()
+                }))}
+              />
+            </Form.Item>
+            <Form.Item label="Qty" name="qty" rules={[{ required: true }]}>
+              <InputNumber style={{ width: '100%' }} min={0.0001} placeholder="0" />
+            </Form.Item>
+            <Form.Item label="Unit Price" name="unitPrice">
+              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+            </Form.Item>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+            <Form.Item label="Style" name="style">
+              <Input />
+            </Form.Item>
+            <Form.Item label="Color" name="color">
+              <Input />
+            </Form.Item>
+            <Form.Item label="Size" name="size">
+              <Input />
+            </Form.Item>
+            <Form.Item label="Delivery Date" name="deliveryDate">
+              <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
+            </Form.Item>
+            <Form.Item label="Ship Mode" name="shipMode">
+              <Input />
+            </Form.Item>
+            <Form.Item label="Factory" name="factory">
+              <Input />
+            </Form.Item>
+            <Form.Item label="Remark" name="remark">
+              <Input />
+            </Form.Item>
+          </div>
+        </Form>
+      </Modal>
 
       <Modal
         open={attachOpen}

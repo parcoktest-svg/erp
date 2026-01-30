@@ -390,17 +390,25 @@ export default function SalesOrderDetailView() {
   }, [bomRows])
 
   const bomProductOptions = useMemo(() => {
+    const labelById = new Map<number, string>()
+    for (const p of (bomAllProducts || []) as any[]) {
+      const id = Number(p?.id)
+      if (!id) continue
+      labelById.set(id, `${p.code || p.id} - ${p.name || ''}`.trim())
+    }
+
     const map = new Map<string, { productId: number; label: string }>()
     for (const ln of (so?.lines || []) as any[]) {
       const pid = Number(ln?.productId)
       if (!pid) continue
       if (!map.has(String(pid))) {
-        const label = ln?.style ? `Product ${pid} (${String(ln.style)})` : `Product ${pid}`
+        const baseLabel = labelById.get(pid) || `Product ${pid}`
+        const label = ln?.style ? `${baseLabel} (${String(ln.style)})` : baseLabel
         map.set(String(pid), { productId: pid, label })
       }
     }
     return Array.from(map.values()).map((x) => ({ value: x.productId, label: x.label }))
-  }, [so?.lines])
+  }, [bomAllProducts, so?.lines])
 
   useEffect(() => {
     if (bomProductId != null) return
@@ -1054,7 +1062,12 @@ export default function SalesOrderDetailView() {
                             scroll={{ x: 1400 }}
                             pagination={{ pageSize: 10 }}
                             columns={[
-                              { title: 'Finished Goods', dataIndex: 'finishedGoods', width: 140, render: () => (bomProductId == null ? '-' : `Product ${bomProductId}`) },
+                              {
+                                title: 'Finished Goods',
+                                dataIndex: 'finishedGoods',
+                                width: 220,
+                                render: () => (bomProductId == null ? '-' : productLabelById.get(Number(bomProductId)) || `Product ${bomProductId}`)
+                              },
                               { title: 'Style', dataIndex: 'style', width: 160, render: () => String(bomSelectedLineMeta?.style || '-') },
                               { title: 'BOM Code', dataIndex: 'bomCode', width: 160 },
                               { title: 'Description(1)', dataIndex: 'description1', width: 220 },

@@ -55,6 +55,48 @@ Ikuti urutan ini untuk menghindari error saat transaksi:
    - Finance Journals/Periods/Reports
    - HR, Admin
 
+### 2.1 Penjelasan untuk user awam: Goods Shipments/Movements → Finance Invoices → Payments
+
+Bagian ini adalah alur standar ERP dari **barang bergerak** sampai **uang tercatat**.
+
+- **Goods Shipments / Movements**
+  - **Goods Shipment** artinya dokumen “barang keluar” (pengiriman ke customer).
+  - **Movement** adalah dokumen pergerakan stok di gudang (bisa barang keluar, barang masuk, atau pindah lokasi).
+  - Jika dokumen shipment/movement di-**Complete**, stok akan berubah dan tercatat di **Inventory → On Hand**.
+
+- **Finance Invoices**
+  - **Invoice** adalah dokumen tagihan.
+  - Untuk **Sales (SO)** biasanya menghasilkan **AR Invoice** (piutang: customer berutang ke kita).
+  - Untuk **Purchase (PO)** biasanya menghasilkan **AP Invoice** (utang: kita berutang ke vendor).
+  - Jika invoice di-**Complete**, maka tagihan resmi tercatat di modul Finance.
+
+- **Payments**
+  - **Payment** adalah pencatatan transaksi pembayaran untuk melunasi invoice.
+  - Untuk **AR**: kita menerima uang dari customer.
+  - Untuk **AP**: kita membayar vendor.
+
+**Contoh alur untuk Sales (paling mudah dipahami)**
+1. Buat **Sales Order (SO)**: customer pesan barang.
+2. Buat **Goods Shipment / Movement**: barang benar-benar dikirim.
+3. Buat **Finance Invoice (AR)**: customer ditagih.
+4. Buat **Payment (AR Receipt)**: uang dari customer diterima.
+
+**Contoh alur untuk Purchase**
+1. Buat **Purchase Order (PO)**: pesan barang ke vendor.
+2. Buat **Movement (Receipt/GRN)**: barang benar-benar diterima di gudang.
+3. Buat **Finance Invoice (AP)**: vendor menagih kita.
+4. Buat **Payment (AP Payment)**: kita bayar vendor.
+
+**Case negatif yang sering terjadi & cara menghindarinya**
+- **Invoice dibuat tapi barang belum dikirim/diterima**
+  - Pastikan shipment/receipt sudah benar dan complete sebelum invoicing (sesuai SOP perusahaan).
+- **Stok tidak berubah**
+  - Pastikan dokumen movement/shipment sudah di-Complete.
+- **Invoice tidak bisa complete**
+  - Pastikan data master lengkap (customer/vendor, produk, pajak jika ada) dan period finance terbuka (jika digunakan).
+- **Payment tidak bisa dibuat / tidak balance**
+  - Pastikan bank/account tersedia dan amount payment sama dengan outstanding invoice.
+
 ---
 
 ## 3) Modul: Core Setup

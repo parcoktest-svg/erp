@@ -47,8 +47,12 @@ Ikuti urutan ini untuk menghindari error saat transaksi:
    - Products
    - Business Partners (Customer/Vendor)
 3. **Transaksi**
-   - Sales Orders → Goods Shipments/Movements → Finance Invoices → Payments
-   - Purchase Orders → Movements (Receipt/GRN) → Finance Invoices (AP) → Payments
+   - Sales (customer beli ke kita):
+     - **SO** (pesanan) → **Shipment/Movement** (barang keluar, stok berkurang) → **AR Invoice** (tagihan ke customer) → **AR Payment** (uang masuk).
+   - Purchase (kita beli ke vendor):
+     - **PO** (pesanan) → **Receipt/GRN Movement** (barang masuk, stok bertambah) → **AP Invoice** (tagihan dari vendor) → **AP Payment** (uang keluar).
+
+   Catatan: bukti dokumen fisik seperti **DO** (*Delivery Order/Surat Jalan*), **POD** (*Proof of Delivery*), dan **BAPB** (*Berita Acara Penerimaan Barang*) biasanya di-scan lalu di-upload sebagai **Attachments** (lihat penjelasan di bagian **2.1**).
 4. **Opsional**
    - Manufacturing (BOMs, Work Orders)
    - Inventory Adjustments
@@ -58,6 +62,13 @@ Ikuti urutan ini untuk menghindari error saat transaksi:
 ### 2.1 Penjelasan untuk user awam: Goods Shipments/Movements → Finance Invoices → Payments
 
 Bagian ini adalah alur standar ERP dari **barang bergerak** sampai **uang tercatat**.
+
+**Singkatan yang sering muncul**
+- **DO**: *Delivery Order / Surat Jalan* (dokumen fisik yang menyertai pengiriman/penerimaan barang).
+- **POD**: *Proof of Delivery* (bukti barang sudah diterima customer; biasanya tanda tangan/foto).
+- **BAPB**: *Berita Acara Penerimaan Barang* (bukti penerimaan barang; biasanya dipakai jika ada prosedur QC/serah terima formal).
+- **AR**: *Accounts Receivable / Piutang* (uang yang harus diterima dari customer).
+- **AP**: *Accounts Payable / Hutang* (uang yang harus dibayar ke vendor).
 
 - **Goods Shipments / Movements**
   - **Goods Shipment** artinya dokumen “barang keluar” (pengiriman ke customer).

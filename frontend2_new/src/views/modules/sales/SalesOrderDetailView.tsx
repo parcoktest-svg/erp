@@ -457,15 +457,6 @@ export default function SalesOrderDetailView() {
     return firstLine || null
   }, [bomProductId, so?.lines])
 
-  const bomRawMaterialRows = useMemo(() => {
-    const snap = bomSnapshotForSelectedProduct
-    const rows = (snap?.lines || []) as any[]
-    return rows.map((r, idx) => ({
-      ...r,
-      _rowKey: String(r?.id || `${r?.componentProductId || 'cmp'}-${idx}`)
-    }))
-  }, [bomSnapshotForSelectedProduct])
-
   const patchBomInlineRow = (rowKey: string, patch: any) => {
     setBomInlineRows((prev) => prev.map((r: any) => (String(r?._key) === String(rowKey) ? { ...r, ...patch } : r)))
   }
@@ -1568,7 +1559,7 @@ export default function SalesOrderDetailView() {
                                 {
                                   title: 'Unit',
                                   dataIndex: 'unit',
-                                  width: 110,
+                                  width: 160,
                                   render: (_: any, r: any) => (
                                     <Input
                                       value={r?.unit ?? ''}
@@ -1580,7 +1571,7 @@ export default function SalesOrderDetailView() {
                                 {
                                   title: 'Qty',
                                   dataIndex: 'qty',
-                                  width: 100,
+                                  width: 140,
                                   align: 'right',
                                   render: (_: any, r: any) => (
                                     <InputNumber
@@ -1625,7 +1616,7 @@ export default function SalesOrderDetailView() {
                                 {
                                   title: 'YY',
                                   dataIndex: 'yy',
-                                  width: 90,
+                                  width: 130,
                                   align: 'right',
                                   render: (_: any, r: any) => (
                                     <InputNumber

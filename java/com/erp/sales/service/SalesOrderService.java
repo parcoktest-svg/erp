@@ -2,7 +2,10 @@ package com.erp.sales.service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -306,7 +309,30 @@ public class SalesOrderService {
         so.setMemo(request.getMemo());
         so.setOrderDate(request.getOrderDate());
 
-        so.getLines().clear();
+        // IMPORTANT: do not clear all lines because SalesOrderLineBom references sales_order_line_id.
+        // We preserve existing line IDs and only delete BOM snapshot for lines that are removed.
+        Map<Long, SalesOrderLine> existingById = new HashMap<>();
+        if (so.getLines() != null) {
+            for (SalesOrderLine l : so.getLines()) {
+                if (l.getId() != null) existingById.put(l.getId(), l);
+            }
+        }
+
+        // remove deleted lines (and their BOM snapshot)
+        List<Long> requestIds = request.getLines().stream()
+                .map(UpdateSalesOrderRequest.UpdateSalesOrderLineRequest::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (so.getLines() != null) {
+            so.getLines().removeIf(l -> {
+                Long id = l.getId();
+                if (id == null) return true;
+                if (requestIds.contains(id)) return false;
+                salesOrderLineBomRepository.deleteBySalesOrderLine_Id(id);
+                return true;
+            });
+        }
+
         BigDecimal totalNet = BigDecimal.ZERO;
         BigDecimal totalTax = BigDecimal.ZERO;
 
@@ -325,8 +351,16 @@ public class SalesOrderService {
                 lineNet = lineReq.getDpPrice();
             }
 
-            SalesOrderLine sol = new SalesOrderLine();
-            sol.setSalesOrder(so);
+            SalesOrderLine sol = null;
+            if (lineReq.getId() != null) {
+                sol = existingById.get(lineReq.getId());
+            }
+            if (sol == null) {
+                sol = new SalesOrderLine();
+                sol.setSalesOrder(so);
+                so.getLines().add(sol);
+            }
+
             sol.setProduct(product);
             sol.setUom(product.getUom());
             sol.setQty(qty);
@@ -356,7 +390,6 @@ public class SalesOrderService {
             sol.setRemark(lineReq.getRemark());
             sol.setFilePath(lineReq.getFilePath());
 
-            so.getLines().add(sol);
             totalNet = totalNet.add(lineNet);
             if (lineReq.getVatAmount() != null) {
                 totalTax = totalTax.add(lineReq.getVatAmount());

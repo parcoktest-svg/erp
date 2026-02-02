@@ -30,6 +30,9 @@ export default function AppLayout() {
         item('Business Partners', '/modules/masterdata/business-partners'),
         item('Currencies', '/modules/masterdata/currencies'),
         item('Products', '/modules/masterdata/products'),
+        item('Price Lists', '/modules/masterdata/price-lists'),
+        item('Price List Versions', '/modules/masterdata/price-list-versions'),
+        item('Product Prices', '/modules/masterdata/product-prices'),
         item('Warehouses', '/modules/masterdata/warehouses')
       ]),
       item('Purchase', 'purchase', [item('Purchase Orders', '/modules/purchase/purchase-orders')]),

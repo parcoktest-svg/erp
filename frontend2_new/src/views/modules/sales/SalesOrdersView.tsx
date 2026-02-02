@@ -274,7 +274,11 @@ export default function SalesOrdersView() {
   }, [filteredRows])
 
   const plvOptions = useMemo(
-    () => (priceListVersions || []).map((p: any) => ({ label: p.name || p.code || String(p.id), value: p.id })),
+    () =>
+      (priceListVersions || []).map((p: any) => ({
+        label: p?.validFrom ? `#${p.id} (Valid From: ${p.validFrom})` : `#${p.id}`,
+        value: p.id
+      })),
     [priceListVersions]
   )
 
@@ -824,6 +828,9 @@ export default function SalesOrdersView() {
   }
 
   async function openCreate() {
+    if (companyId && priceListVersions.length === 0) {
+      await loadLookups(companyId)
+    }
     setEditId(null)
     form.resetFields()
     form.setFieldsValue({
@@ -933,72 +940,83 @@ export default function SalesOrdersView() {
   }
 
   async function save() {
-    if (!companyId) return
+    if (!companyId) {
+      message.error('Select company first')
+      return
+    }
 
-    const values = await form.validateFields()
-    const orderType: SalesOrderType = values.orderType || 'DOMESTIC'
-
-    const payload: any = {
-      orgId: values.orgId || null,
-      orderType,
-      businessPartnerId: values.businessPartnerId,
-      priceListVersionId: values.priceListVersionId,
-      orderDate: toLocalDateString(values.orderDate),
-
-      buyerPo: values.buyerPo || null,
-      departmentId: values.departmentId || null,
-      employeeId: values.employeeId || null,
-      inCharge: values.inCharge || null,
-      paymentCondition: values.paymentCondition || null,
-      deliveryPlace: values.deliveryPlace || null,
-      forwardingWarehouseId: values.forwardingWarehouseId || null,
-      memo: values.memo || null,
-
-      currencyId: orderType === 'EXPORT' ? values.currencyId || null : null,
-      exchangeRate: orderType === 'EXPORT' ? values.exchangeRate ?? null : null,
-      foreignAmount: orderType === 'EXPORT' ? values.foreignAmount ?? null : null,
-
-      lines: (values.lines || []).map((l: any) => ({
-        productId: l.productId,
-        qty: l.qty,
-        unitPrice: l.unitPrice ?? null,
-        description: l.description || null,
-        unit: l.unit || null,
-        size: l.size || null,
-        nationalSize: l.nationalSize || null,
-        style: l.style || null,
-        cuttingNo: l.cuttingNo || null,
-        color: l.color || null,
-        destination: l.destination || null,
-        supplyAmount: l.supplyAmount ?? null,
-        vatAmount: l.vatAmount ?? null,
-        fobPrice: l.fobPrice ?? null,
-        ldpPrice: l.ldpPrice ?? null,
-        dpPrice: l.dpPrice ?? null,
-        cmtCost: l.cmtCost ?? null,
-        cmCost: l.cmCost ?? null,
-        fabricEta: toLocalDateString(l.fabricEta),
-        fabricEtd: toLocalDateString(l.fabricEtd),
-        deliveryDate: toLocalDateString(l.deliveryDate),
-        shipMode: l.shipMode || null,
-        factory: l.factory || null,
-        remark: l.remark || null,
-        filePath: l.filePath || null
-      })),
-      deliverySchedules:
-        orderType === 'DOMESTIC'
-          ? (values.deliverySchedules || []).map((s: any) => ({
-              deliveryDate: toLocalDateString(s.deliveryDate),
-              shipMode: s.shipMode || null,
-              factory: s.factory || null,
-              remark: s.remark || null,
-              filePath: s.filePath || null
-            }))
-          : null
+    let values: any
+    try {
+      values = await form.validateFields()
+    } catch {
+      message.error('Please complete required fields')
+      return
     }
 
     setSaving(true)
     try {
+      const orderType: SalesOrderType = values.orderType || 'DOMESTIC'
+
+      const payload: any = {
+        orgId: values.orgId || null,
+        orderType,
+        businessPartnerId: values.businessPartnerId,
+        priceListVersionId: values.priceListVersionId,
+        orderDate: toLocalDateString(values.orderDate),
+
+        buyerPo: values.buyerPo || null,
+        departmentId: values.departmentId || null,
+        employeeId: values.employeeId || null,
+        inCharge: values.inCharge || null,
+        paymentCondition: values.paymentCondition || null,
+        deliveryPlace: values.deliveryPlace || null,
+        forwardingWarehouseId: values.forwardingWarehouseId || null,
+        memo: values.memo || null,
+
+        currencyId: orderType === 'EXPORT' ? values.currencyId || null : null,
+        exchangeRate: orderType === 'EXPORT' ? values.exchangeRate ?? null : null,
+        foreignAmount: orderType === 'EXPORT' ? values.foreignAmount ?? null : null,
+
+        lines: (values.lines || []).map((l: any) => ({
+          id: editId ? (l.id ?? null) : undefined,
+          productId: l.productId,
+          qty: l.qty,
+          unitPrice: l.unitPrice ?? null,
+          description: l.description || null,
+          unit: l.unit || null,
+          size: l.size || null,
+          nationalSize: l.nationalSize || null,
+          style: l.style || null,
+          cuttingNo: l.cuttingNo || null,
+          color: l.color || null,
+          destination: l.destination || null,
+          supplyAmount: l.supplyAmount ?? null,
+          vatAmount: l.vatAmount ?? null,
+          fobPrice: l.fobPrice ?? null,
+          ldpPrice: l.ldpPrice ?? null,
+          dpPrice: l.dpPrice ?? null,
+          cmtCost: l.cmtCost ?? null,
+          cmCost: l.cmCost ?? null,
+          fabricEta: toLocalDateString(l.fabricEta),
+          fabricEtd: toLocalDateString(l.fabricEtd),
+          deliveryDate: toLocalDateString(l.deliveryDate),
+          shipMode: l.shipMode || null,
+          factory: l.factory || null,
+          remark: l.remark || null,
+          filePath: l.filePath || null
+        })),
+        deliverySchedules:
+          orderType === 'DOMESTIC'
+            ? (values.deliverySchedules || []).map((s: any) => ({
+                deliveryDate: toLocalDateString(s.deliveryDate),
+                shipMode: s.shipMode || null,
+                factory: s.factory || null,
+                remark: s.remark || null,
+                filePath: s.filePath || null
+              }))
+            : null
+      }
+
       if (editId) {
         await salesApi.updateSalesOrder(companyId, editId, payload)
         message.success('Updated')
@@ -1128,8 +1146,16 @@ export default function SalesOrdersView() {
         width={1100}
         bodyStyle={{ maxHeight: '80vh', overflowY: 'auto' }}
         onCancel={() => setOpen(false)}
-        onOk={() => void save()}
-        okButtonProps={{ loading: saving }}
+        footer={
+          <Space>
+            <Button onClick={() => setOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="primary" loading={saving} disabled={!companyId} onClick={() => void save()}>
+              OK
+            </Button>
+          </Space>
+        }
         destroyOnClose
       >
         <Form layout="vertical" form={form}>

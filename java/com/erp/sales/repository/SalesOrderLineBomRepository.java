@@ -11,5 +11,7 @@ public interface SalesOrderLineBomRepository extends JpaRepository<SalesOrderLin
 
     Optional<SalesOrderLineBom> findBySalesOrderLine_Id(Long salesOrderLineId);
 
+    void deleteBySalesOrderLine_Id(Long salesOrderLineId);
+
     List<SalesOrderLineBom> findBySalesOrderLine_SalesOrder_Id(Long salesOrderId);
 }

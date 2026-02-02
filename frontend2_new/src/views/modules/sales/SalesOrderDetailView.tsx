@@ -518,15 +518,48 @@ export default function SalesOrderDetailView() {
       return
     }
 
+    const businessPartnerId = (so as any)?.businessPartnerId ?? (so as any)?.businessPartner?.id ?? null
+    const priceListVersionId = (so as any)?.priceListVersionId ?? (so as any)?.priceListVersion?.id ?? null
+    const orderDate = (so as any)?.orderDate ?? null
+    if (!businessPartnerId) {
+      message.error('Customer is missing on Sales Order')
+      return
+    }
+    if (!priceListVersionId) {
+      message.error('Price List Version is missing on Sales Order')
+      return
+    }
+    if (!orderDate) {
+      message.error('Order Date is missing on Sales Order')
+      return
+    }
+
     setAddLineSaving(true)
     try {
       const values = await addLineForm.validateFields()
       const existingLines = ((so as any)?.lines || []) as any[]
 
       const payload: any = {
-        ...(so as any),
-        orderDate: (so as any)?.orderDate ?? null,
+        orgId: (so as any)?.orgId ?? (so as any)?.org?.id ?? null,
+        orderType: (so as any)?.orderType ?? null,
+        businessPartnerId: Number(businessPartnerId),
+        priceListVersionId: Number(priceListVersionId),
+        orderDate,
+
+        buyerPo: (so as any)?.buyerPo ?? null,
+        departmentId: (so as any)?.departmentId ?? (so as any)?.department?.id ?? null,
+        employeeId: (so as any)?.employeeId ?? (so as any)?.employee?.id ?? null,
+        inCharge: (so as any)?.inCharge ?? null,
+        paymentCondition: (so as any)?.paymentCondition ?? null,
+        deliveryPlace: (so as any)?.deliveryPlace ?? null,
+        forwardingWarehouseId: (so as any)?.forwardingWarehouseId ?? (so as any)?.forwardingWarehouse?.id ?? null,
+        memo: (so as any)?.memo ?? null,
+
+        currencyId: (so as any)?.currencyId ?? (so as any)?.currency?.id ?? null,
+        exchangeRate: (so as any)?.exchangeRate ?? null,
+        foreignAmount: (so as any)?.foreignAmount ?? null,
         lines: [...existingLines, values].map((l: any) => ({
+          id: l.id ?? null,
           productId: l.productId,
           qty: l.qty,
           unitPrice: l.unitPrice ?? null,
@@ -552,7 +585,8 @@ export default function SalesOrderDetailView() {
           factory: l.factory || null,
           remark: l.remark || null,
           filePath: l.filePath || null
-        }))
+        })),
+        deliverySchedules: (so as any)?.deliverySchedules ?? null
       }
 
       await salesApi.updateSalesOrder(companyId, so.id, payload)
@@ -562,10 +596,32 @@ export default function SalesOrderDetailView() {
       await loadBoms(companyId, so.id)
     } catch (e: any) {
       if (e?.errorFields) {
-        message.error('Please complete required fields')
-      } else {
-        message.error(getApiErrorMessage(e, 'Failed to add item'))
+        const labelByField: Record<string, string> = {
+          productId: 'Item Name',
+          qty: 'Qty'
+        }
+
+        const missing = (e.errorFields || [])
+          .map((x: any) => {
+            const name = Array.isArray(x?.name) ? x.name[0] : x?.name
+            return labelByField[String(name)] || String(name || '')
+          })
+          .filter(Boolean)
+
+        const first = (e.errorFields || [])[0]
+        const firstName = first?.name
+        if (firstName) {
+          try {
+            addLineForm.scrollToField(firstName)
+          } catch {
+            // ignore
+          }
+        }
+
+        message.error(missing.length ? `Please fill required: ${missing.join(', ')}` : 'Please complete required fields')
+        return
       }
+      message.error(getApiErrorMessage(e, 'Failed to add item'))
     } finally {
       setAddLineSaving(false)
     }
@@ -1068,7 +1124,16 @@ export default function SalesOrderDetailView() {
                                 width: 220,
                                 render: () => (bomProductId == null ? '-' : productLabelById.get(Number(bomProductId)) || `Product ${bomProductId}`)
                               },
-                              { title: 'Style', dataIndex: 'style', width: 160, render: () => String(bomSelectedLineMeta?.style || '-') },
+                              {
+                                title: 'Style',
+                                dataIndex: 'style',
+                                width: 160,
+                                render: (_: any, r: any) => {
+                                  const pid = r?.componentProductId
+                                  if (pid == null) return '-'
+                                  return productLabelById.get(Number(pid)) || `Product ${pid}`
+                                }
+                              },
                               { title: 'BOM Code', dataIndex: 'bomCode', width: 160 },
                               { title: 'Description(1)', dataIndex: 'description1', width: 220 },
                               { title: 'Color (Description(2))', dataIndex: 'colorDescription2', width: 180 },
@@ -1215,6 +1280,19 @@ export default function SalesOrderDetailView() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+            <Form.Item label="Description" name="description">
+              <Input />
+            </Form.Item>
+            <Form.Item label="Unit" name="unit">
+              <Input />
+            </Form.Item>
+            <Form.Item label="National Size" name="nationalSize">
+              <Input />
+            </Form.Item>
+            <Form.Item label="Cutting No" name="cuttingNo">
+              <Input />
+            </Form.Item>
+
             <Form.Item label="Style" name="style">
               <Input />
             </Form.Item>
@@ -1226,6 +1304,39 @@ export default function SalesOrderDetailView() {
             </Form.Item>
             <Form.Item label="Delivery Date" name="deliveryDate">
               <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
+            </Form.Item>
+            <Form.Item label="Destination" name="destination">
+              <Input />
+            </Form.Item>
+            <Form.Item label="Supply" name="supplyAmount">
+              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+            </Form.Item>
+            <Form.Item label="VAT" name="vatAmount">
+              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+            </Form.Item>
+            <Form.Item label="FOB" name="fobPrice">
+              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+            </Form.Item>
+            <Form.Item label="LDP" name="ldpPrice">
+              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+            </Form.Item>
+            <Form.Item label="DP" name="dpPrice">
+              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+            </Form.Item>
+            <Form.Item label="CMT Cost" name="cmtCost">
+              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+            </Form.Item>
+            <Form.Item label="CM Cost" name="cmCost">
+              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+            </Form.Item>
+            <Form.Item label="Fabric ETA" name="fabricEta">
+              <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
+            </Form.Item>
+            <Form.Item label="Fabric ETD" name="fabricEtd">
+              <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
+            </Form.Item>
+            <Form.Item label="File Path" name="filePath">
+              <Input />
             </Form.Item>
             <Form.Item label="Ship Mode" name="shipMode">
               <Input />

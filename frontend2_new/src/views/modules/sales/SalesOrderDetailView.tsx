@@ -57,6 +57,9 @@ export default function SalesOrderDetailView() {
   const [bomEditSaving, setBomEditSaving] = useState(false)
   const [bomEditRows, setBomEditRows] = useState<any[]>([])
 
+  const [bomInlineRows, setBomInlineRows] = useState<any[]>([])
+  const [bomInlineSaving, setBomInlineSaving] = useState(false)
+
   const [bomProductsLoading, setBomProductsLoading] = useState(false)
   const [bomAllProducts, setBomAllProducts] = useState<any[]>([])
   const [bomCurrenciesLoading, setBomCurrenciesLoading] = useState(false)
@@ -119,6 +122,9 @@ export default function SalesOrderDetailView() {
   const [addLineOpen, setAddLineOpen] = useState(false)
   const [addLineSaving, setAddLineSaving] = useState(false)
   const [addLineForm] = Form.useForm()
+
+  const [lineEditRows, setLineEditRows] = useState<any[]>([])
+  const [lineEditSaving, setLineEditSaving] = useState(false)
 
   const bomCurrencyOptions = useMemo(
     () => (bomCurrencies || []).map((c: any) => ({ value: c.id, label: `${c.code || c.id} - ${c.name || ''}`.trim() })),
@@ -366,6 +372,16 @@ export default function SalesOrderDetailView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, id])
 
+  useEffect(() => {
+    const lines = ((so as any)?.lines || []) as any[]
+    setLineEditRows(
+      lines.map((l: any) => ({
+        ...l,
+        _key: String(l?.id ?? `${l?.productId ?? 'p'}-${l?.style ?? ''}-${l?.color ?? ''}-${l?.size ?? ''}-${Math.random()}`)
+      }))
+    )
+  }, [so])
+
   const loadAttachments = async (cid: number, refType: string, refId: number) => {
     setAttachLoading(true)
     try {
@@ -424,6 +440,16 @@ export default function SalesOrderDetailView() {
     return bomByLineId.get(Number(firstLine.id)) || null
   }, [bomByLineId, bomProductId, so?.lines])
 
+  useEffect(() => {
+    const existing = (bomSnapshotForSelectedProduct?.lines || []) as any[]
+    setBomInlineRows(
+      (existing || []).map((r: any, idx: number) => ({
+        ...r,
+        _key: String(r?.id || `${r?.componentProductId || 'cmp'}-${idx}`)
+      }))
+    )
+  }, [bomProductId, bomSnapshotForSelectedProduct])
+
   const bomSelectedLineMeta = useMemo(() => {
     if (bomProductId == null) return null
     const lines = (so?.lines || []) as any[]
@@ -439,6 +465,89 @@ export default function SalesOrderDetailView() {
       _rowKey: String(r?.id || `${r?.componentProductId || 'cmp'}-${idx}`)
     }))
   }, [bomSnapshotForSelectedProduct])
+
+  const patchBomInlineRow = (rowKey: string, patch: any) => {
+    setBomInlineRows((prev) => prev.map((r: any) => (String(r?._key) === String(rowKey) ? { ...r, ...patch } : r)))
+  }
+
+  const addBomInlineRow = () => {
+    if (String(so?.status || '') !== 'DRAFTED') return
+    setBomInlineRows((prev) => [
+      ...prev,
+      {
+        _key: `tmp-${Date.now()}`,
+        componentProductId: null,
+        qty: 1,
+        bomCode: null,
+        description1: null,
+        colorDescription2: null,
+        unit: null,
+        unitPriceForeign: null,
+        unitPriceDomestic: null,
+        yy: null,
+        exchangeRate: null,
+        amountForeign: null,
+        amountDomestic: null,
+        currencyId: null
+      }
+    ])
+  }
+
+  const removeBomInlineRow = (rowKey: string) => {
+    if (String(so?.status || '') !== 'DRAFTED') return
+    setBomInlineRows((prev) => prev.filter((r: any) => String(r?._key) !== String(rowKey)))
+  }
+
+  const saveBomInline = async () => {
+    if (!companyId || !so?.id) return
+    if (!bomSelectedLineMeta?.id) {
+      message.error('Finished goods line is missing')
+      return
+    }
+    if (String(so?.status || '') !== 'DRAFTED') {
+      message.error('Only allowed while Sales Order is DRAFTED')
+      return
+    }
+
+    const validRows = (bomInlineRows || [])
+      .map((r: any) => ({
+        componentProductId: r.componentProductId != null ? Number(r.componentProductId) : null,
+        qty: r.qty != null ? Number(r.qty) : null,
+        bomCode: r.bomCode || null,
+        description1: r.description1 || null,
+        colorDescription2: r.colorDescription2 || null,
+        unit: r.unit || null,
+        unitPriceForeign: r.unitPriceForeign != null ? Number(r.unitPriceForeign) : null,
+        unitPriceDomestic: r.unitPriceDomestic != null ? Number(r.unitPriceDomestic) : null,
+        yy: r.yy != null ? Number(r.yy) : null,
+        exchangeRate: r.exchangeRate != null ? Number(r.exchangeRate) : null,
+        amountForeign: r.amountForeign != null ? Number(r.amountForeign) : null,
+        amountDomestic: r.amountDomestic != null ? Number(r.amountDomestic) : null,
+        currencyId: r.currencyId != null ? Number(r.currencyId) : null
+      }))
+      .filter((r: any) => r.componentProductId != null && r.qty != null && r.qty > 0)
+
+    if (!validRows.length) {
+      message.error('Please add at least 1 row with Component and Qty > 0')
+      return
+    }
+
+    setBomInlineSaving(true)
+    try {
+      await salesApi.setSalesOrderLineBom(companyId, so.id, {
+        salesOrderLineId: Number(bomSelectedLineMeta.id),
+        sourceBomId: null,
+        sourceBomVersion: null,
+        lines: validRows
+      })
+      message.success('BOM saved')
+      await loadBoms(companyId, so.id)
+    } catch (e: any) {
+      message.error(getApiErrorMessage(e, 'Failed to save BOM'))
+    } finally {
+      setBomInlineSaving(false)
+    }
+  }
 
   const bomLineTableRows = useMemo(() => {
     const lines = (so?.lines || []) as any[]
@@ -484,24 +593,282 @@ export default function SalesOrderDetailView() {
     return m
   }, [bomAllProducts])
 
-  const lineColumns = [
+  const productSelectOptions = useMemo(() => {
+    return ((bomAllProducts || []) as any[]).map((p: any) => ({
+      value: Number(p.id),
+      label: `${p.code || p.id} - ${p.name || ''}`.trim()
+    }))
+  }, [bomAllProducts])
+
+  const patchLineRow = (rowKey: string, patch: any) => {
+    setLineEditRows((prev) => prev.map((r: any) => (String(r?._key) === String(rowKey) ? { ...r, ...patch } : r)))
+  }
+
+  const addLineRow = () => {
+    if (String(so?.status || '') !== 'DRAFTED') return
+    setLineEditRows((prev) => [
+      ...prev,
+      {
+        _key: `tmp-${Date.now()}`,
+        id: null,
+        productId: null,
+        qty: 1,
+        style: null,
+        color: null,
+        size: null,
+        deliveryDate: null,
+        shipMode: null,
+        factory: null,
+        remark: null
+      }
+    ])
+  }
+
+  const removeLineRow = (rowKey: string) => {
+    if (String(so?.status || '') !== 'DRAFTED') return
+    setLineEditRows((prev) => prev.filter((r: any) => String(r?._key) !== String(rowKey)))
+  }
+
+  const saveLineEdits = async () => {
+    if (!companyId) {
+      message.error('Company not selected')
+      return
+    }
+    if (!so?.id) {
+      message.error('Sales Order not loaded')
+      return
+    }
+    if (String(so?.status || '') !== 'DRAFTED') {
+      message.error('Only allowed while Sales Order is DRAFTED')
+      return
+    }
+
+    const businessPartnerId = (so as any)?.businessPartnerId ?? (so as any)?.businessPartner?.id ?? null
+    const priceListVersionId = (so as any)?.priceListVersionId ?? (so as any)?.priceListVersion?.id ?? null
+    const orderDate = (so as any)?.orderDate ?? null
+    if (!businessPartnerId) {
+      message.error('Customer is missing on Sales Order')
+      return
+    }
+    if (!priceListVersionId) {
+      message.error('Price List Version is missing on Sales Order')
+      return
+    }
+    if (!orderDate) {
+      message.error('Order Date is missing on Sales Order')
+      return
+    }
+
+    const normalizedLines = (lineEditRows || []).map((l: any) => ({
+      id: l.id ?? null,
+      productId: l.productId != null ? Number(l.productId) : null,
+      qty: l.qty != null ? Number(l.qty) : null,
+      unitPrice: l.unitPrice ?? null,
+      description: l.description || null,
+      unit: l.unit || null,
+      size: l.size || null,
+      nationalSize: l.nationalSize || null,
+      style: l.style || null,
+      cuttingNo: l.cuttingNo || null,
+      color: l.color || null,
+      destination: l.destination || null,
+      supplyAmount: l.supplyAmount ?? null,
+      vatAmount: l.vatAmount ?? null,
+      fobPrice: l.fobPrice ?? null,
+      ldpPrice: l.ldpPrice ?? null,
+      dpPrice: l.dpPrice ?? null,
+      cmtCost: l.cmtCost ?? null,
+      cmCost: l.cmCost ?? null,
+      fabricEta: toLocalDateString(l.fabricEta),
+      fabricEtd: toLocalDateString(l.fabricEtd),
+      deliveryDate: toLocalDateString(l.deliveryDate),
+      shipMode: l.shipMode || null,
+      factory: l.factory || null,
+      remark: l.remark || null,
+      filePath: l.filePath || null
+    }))
+
+    const missing = [] as string[]
+    if (normalizedLines.some((l: any) => !l.productId)) missing.push('Item Name')
+    if (normalizedLines.some((l: any) => l.qty == null || Number(l.qty) <= 0)) missing.push('Qty')
+    if (missing.length) {
+      message.error(`Please fill required: ${Array.from(new Set(missing)).join(', ')}`)
+      return
+    }
+
+    setLineEditSaving(true)
+    try {
+      const payload: any = {
+        orgId: (so as any)?.orgId ?? (so as any)?.org?.id ?? null,
+        orderType: (so as any)?.orderType ?? null,
+        businessPartnerId: Number(businessPartnerId),
+        priceListVersionId: Number(priceListVersionId),
+        orderDate,
+
+        buyerPo: (so as any)?.buyerPo ?? null,
+        departmentId: (so as any)?.departmentId ?? (so as any)?.department?.id ?? null,
+        employeeId: (so as any)?.employeeId ?? (so as any)?.employee?.id ?? null,
+        inCharge: (so as any)?.inCharge ?? null,
+        paymentCondition: (so as any)?.paymentCondition ?? null,
+        deliveryPlace: (so as any)?.deliveryPlace ?? null,
+        forwardingWarehouseId: (so as any)?.forwardingWarehouseId ?? (so as any)?.forwardingWarehouse?.id ?? null,
+        memo: (so as any)?.memo ?? null,
+
+        currencyId: (so as any)?.currencyId ?? (so as any)?.currency?.id ?? null,
+        exchangeRate: (so as any)?.exchangeRate ?? null,
+        foreignAmount: (so as any)?.foreignAmount ?? null,
+
+        lines: normalizedLines,
+        deliverySchedules: (so as any)?.deliverySchedules ?? null
+      }
+
+      await salesApi.updateSalesOrder(companyId, so.id, payload)
+      message.success('Lines saved')
+      await load(companyId, so.id)
+      await loadBoms(companyId, so.id)
+    } catch (e: any) {
+      message.error(getApiErrorMessage(e, 'Failed to save lines'))
+    } finally {
+      setLineEditSaving(false)
+    }
+  }
+
+  const lineColumns: any[] = [
     {
       title: 'Item Name',
       dataIndex: 'productId',
-      width: 220,
-      render: (v: any) => {
-        const id = Number(v)
-        return productLabelById.get(id) || (v == null ? '-' : String(v))
-      }
+      width: 260,
+      render: (_: any, r: any) => (
+        <Select
+          style={{ width: '100%' }}
+          value={r?.productId ?? undefined}
+          options={productSelectOptions}
+          showSearch
+          optionFilterProp="label"
+          placeholder="Select item"
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onChange={(v) => patchLineRow(String(r?._key), { productId: Number(v) })}
+        />
+      )
     },
-    { title: 'Qty', dataIndex: 'qty', width: 90, align: 'right' as const },
-    { title: 'Style', dataIndex: 'style', width: 140 },
-    { title: 'Color', dataIndex: 'color', width: 120 },
-    { title: 'Size', dataIndex: 'size', width: 100 },
-    { title: 'Delivery Date', dataIndex: 'deliveryDate', width: 130 },
-    { title: 'Ship Mode', dataIndex: 'shipMode', width: 120 },
-    { title: 'Factory', dataIndex: 'factory', width: 140 },
-    { title: 'Remark', dataIndex: 'remark' }
+    {
+      title: 'Qty',
+      dataIndex: 'qty',
+      width: 100,
+      align: 'right' as const,
+      render: (_: any, r: any) => (
+        <InputNumber
+          style={{ width: '100%' }}
+          min={0}
+          value={r?.qty ?? undefined}
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onChange={(v) => patchLineRow(String(r?._key), { qty: v == null ? null : Number(v) })}
+        />
+      )
+    },
+    {
+      title: 'Style',
+      dataIndex: 'style',
+      width: 160,
+      render: (_: any, r: any) => (
+        <Input
+          value={r?.style ?? ''}
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onChange={(e) => patchLineRow(String(r?._key), { style: e.target.value || null })}
+        />
+      )
+    },
+    {
+      title: 'Color',
+      dataIndex: 'color',
+      width: 140,
+      render: (_: any, r: any) => (
+        <Input
+          value={r?.color ?? ''}
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onChange={(e) => patchLineRow(String(r?._key), { color: e.target.value || null })}
+        />
+      )
+    },
+    {
+      title: 'Size',
+      dataIndex: 'size',
+      width: 120,
+      render: (_: any, r: any) => (
+        <Input
+          value={r?.size ?? ''}
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onChange={(e) => patchLineRow(String(r?._key), { size: e.target.value || null })}
+        />
+      )
+    },
+    {
+      title: 'Delivery Date',
+      dataIndex: 'deliveryDate',
+      width: 150,
+      render: (_: any, r: any) => (
+        <DatePicker
+          style={{ width: '100%' }}
+          value={r?.deliveryDate ? dayjs(r.deliveryDate) : null}
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onChange={(d) => patchLineRow(String(r?._key), { deliveryDate: d ? d.format('YYYY-MM-DD') : null })}
+        />
+      )
+    },
+    {
+      title: 'Ship Mode',
+      dataIndex: 'shipMode',
+      width: 140,
+      render: (_: any, r: any) => (
+        <Input
+          value={r?.shipMode ?? ''}
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onChange={(e) => patchLineRow(String(r?._key), { shipMode: e.target.value || null })}
+        />
+      )
+    },
+    {
+      title: 'Factory',
+      dataIndex: 'factory',
+      width: 160,
+      render: (_: any, r: any) => (
+        <Input
+          value={r?.factory ?? ''}
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onChange={(e) => patchLineRow(String(r?._key), { factory: e.target.value || null })}
+        />
+      )
+    },
+    {
+      title: 'Remark',
+      dataIndex: 'remark',
+      width: 220,
+      render: (_: any, r: any) => (
+        <Input
+          value={r?.remark ?? ''}
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onChange={(e) => patchLineRow(String(r?._key), { remark: e.target.value || null })}
+        />
+      )
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      width: 90,
+      render: (_: any, r: any) => (
+        <Popconfirm
+          title="Remove this row?"
+          okText="Remove"
+          cancelText="Cancel"
+          disabled={String(so?.status || '') !== 'DRAFTED'}
+          onConfirm={() => removeLineRow(String(r?._key))}
+        >
+          <Button size="small" danger disabled={String(so?.status || '') !== 'DRAFTED'}>
+            Remove
+          </Button>
+        </Popconfirm>
+      )
+    }
   ]
 
   const saveAddLine = async () => {
@@ -1007,22 +1374,25 @@ export default function SalesOrderDetailView() {
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                    <Button
-                      type="primary"
-                      disabled={String(so?.status || '') !== 'DRAFTED'}
-                      onClick={() => {
-                        addLineForm.resetFields()
-                        addLineForm.setFieldsValue({ qty: 1 })
-                        setAddLineOpen(true)
-                      }}
-                    >
+                    <Button type="primary" disabled={String(so?.status || '') !== 'DRAFTED'} onClick={() => addLineRow()}>
                       Add Item
                     </Button>
+                    <Button
+                      type="default"
+                      loading={lineEditSaving}
+                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                      onClick={() => void saveLineEdits()}
+                    >
+                      Save
+                    </Button>
                   </Space>
-                  <DataTable
-                    rowKey={(r: any) => r.id || `${r.productId}-${r.style}-${r.color}-${r.size}`}
-                    dataSource={so?.lines || []}
+                  <Table
+                    size="small"
+                    rowKey={(r: any) => String(r?._key)}
+                    dataSource={lineEditRows}
                     columns={lineColumns}
+                    scroll={{ x: 1200 }}
+                    pagination={{ pageSize: 10 }}
                   />
                 </Space>
               )
@@ -1110,43 +1480,246 @@ export default function SalesOrderDetailView() {
                         key: 'raw',
                         label: 'Raw Materials',
                         children: (
-                          <Table
-                            size="small"
-                            rowKey={(r: any) => String(r?._rowKey)}
-                            loading={bomLoading}
-                            dataSource={bomRawMaterialRows}
-                            scroll={{ x: 1400 }}
-                            pagination={{ pageSize: 10 }}
-                            columns={[
-                              {
-                                title: 'Finished Goods',
-                                dataIndex: 'finishedGoods',
-                                width: 220,
-                                render: () => (bomProductId == null ? '-' : productLabelById.get(Number(bomProductId)) || `Product ${bomProductId}`)
-                              },
-                              {
-                                title: 'Style',
-                                dataIndex: 'style',
-                                width: 160,
-                                render: (_: any, r: any) => {
-                                  const pid = r?.componentProductId
-                                  if (pid == null) return '-'
-                                  return productLabelById.get(Number(pid)) || `Product ${pid}`
+                          <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                              <Button
+                                type="primary"
+                                disabled={String(so?.status || '') !== 'DRAFTED' || !bomSelectedLineMeta?.id}
+                                onClick={() => addBomInlineRow()}
+                              >
+                                Add Row
+                              </Button>
+                              <Button
+                                type="default"
+                                loading={bomInlineSaving}
+                                disabled={String(so?.status || '') !== 'DRAFTED' || !bomSelectedLineMeta?.id}
+                                onClick={() => void saveBomInline()}
+                              >
+                                Save
+                              </Button>
+                            </Space>
+                            <Table
+                              size="small"
+                              rowKey={(r: any) => String(r?._key)}
+                              loading={bomLoading}
+                              dataSource={bomInlineRows}
+                              scroll={{ x: 1600 }}
+                              pagination={{ pageSize: 10 }}
+                              columns={[
+                                {
+                                  title: 'Finished Goods',
+                                  dataIndex: 'finishedGoods',
+                                  width: 220,
+                                  render: () => (bomProductId == null ? '-' : productLabelById.get(Number(bomProductId)) || `Product ${bomProductId}`)
+                                },
+                                {
+                                  title: 'Style',
+                                  dataIndex: 'componentProductId',
+                                  width: 260,
+                                  render: (_: any, r: any) => (
+                                    <Select
+                                      style={{ width: '100%' }}
+                                      value={r?.componentProductId ?? undefined}
+                                      options={productSelectOptions}
+                                      showSearch
+                                      optionFilterProp="label"
+                                      placeholder="Select component"
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { componentProductId: Number(v) })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'BOM Code',
+                                  dataIndex: 'bomCode',
+                                  width: 160,
+                                  render: (_: any, r: any) => (
+                                    <Input
+                                      value={r?.bomCode ?? ''}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(e) => patchBomInlineRow(String(r?._key), { bomCode: e.target.value || null })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Description(1)',
+                                  dataIndex: 'description1',
+                                  width: 220,
+                                  render: (_: any, r: any) => (
+                                    <Input
+                                      value={r?.description1 ?? ''}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(e) => patchBomInlineRow(String(r?._key), { description1: e.target.value || null })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Color (Description(2))',
+                                  dataIndex: 'colorDescription2',
+                                  width: 180,
+                                  render: (_: any, r: any) => (
+                                    <Input
+                                      value={r?.colorDescription2 ?? ''}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(e) => patchBomInlineRow(String(r?._key), { colorDescription2: e.target.value || null })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Unit',
+                                  dataIndex: 'unit',
+                                  width: 110,
+                                  render: (_: any, r: any) => (
+                                    <Input
+                                      value={r?.unit ?? ''}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(e) => patchBomInlineRow(String(r?._key), { unit: e.target.value || null })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Qty',
+                                  dataIndex: 'qty',
+                                  width: 100,
+                                  align: 'right',
+                                  render: (_: any, r: any) => (
+                                    <InputNumber
+                                      style={{ width: '100%' }}
+                                      min={0}
+                                      value={r?.qty ?? undefined}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { qty: v == null ? null : Number(v) })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Unit Price (Foreign)',
+                                  dataIndex: 'unitPriceForeign',
+                                  width: 160,
+                                  align: 'right',
+                                  render: (_: any, r: any) => (
+                                    <InputNumber
+                                      style={{ width: '100%' }}
+                                      min={0}
+                                      value={r?.unitPriceForeign ?? undefined}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { unitPriceForeign: v == null ? null : Number(v) })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Unit Price (Domestic)',
+                                  dataIndex: 'unitPriceDomestic',
+                                  width: 170,
+                                  align: 'right',
+                                  render: (_: any, r: any) => (
+                                    <InputNumber
+                                      style={{ width: '100%' }}
+                                      min={0}
+                                      value={r?.unitPriceDomestic ?? undefined}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { unitPriceDomestic: v == null ? null : Number(v) })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'YY',
+                                  dataIndex: 'yy',
+                                  width: 90,
+                                  align: 'right',
+                                  render: (_: any, r: any) => (
+                                    <InputNumber
+                                      style={{ width: '100%' }}
+                                      min={0}
+                                      value={r?.yy ?? undefined}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { yy: v == null ? null : Number(v) })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Exchange Rate',
+                                  dataIndex: 'exchangeRate',
+                                  width: 140,
+                                  align: 'right',
+                                  render: (_: any, r: any) => (
+                                    <InputNumber
+                                      style={{ width: '100%' }}
+                                      min={0}
+                                      value={r?.exchangeRate ?? undefined}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { exchangeRate: v == null ? null : Number(v) })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Amount (Foreign)',
+                                  dataIndex: 'amountForeign',
+                                  width: 150,
+                                  align: 'right',
+                                  render: (_: any, r: any) => (
+                                    <InputNumber
+                                      style={{ width: '100%' }}
+                                      min={0}
+                                      value={r?.amountForeign ?? undefined}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { amountForeign: v == null ? null : Number(v) })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Amount (Domestic)',
+                                  dataIndex: 'amountDomestic',
+                                  width: 160,
+                                  align: 'right',
+                                  render: (_: any, r: any) => (
+                                    <InputNumber
+                                      style={{ width: '100%' }}
+                                      min={0}
+                                      value={r?.amountDomestic ?? undefined}
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { amountDomestic: v == null ? null : Number(v) })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Currency',
+                                  dataIndex: 'currencyId',
+                                  width: 160,
+                                  render: (_: any, r: any) => (
+                                    <Select
+                                      style={{ width: '100%' }}
+                                      value={r?.currencyId ?? undefined}
+                                      options={bomCurrencyOptions}
+                                      showSearch
+                                      optionFilterProp="label"
+                                      placeholder="Currency"
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { currencyId: Number(v) })}
+                                    />
+                                  )
+                                },
+                                {
+                                  title: 'Action',
+                                  key: 'action',
+                                  width: 90,
+                                  render: (_: any, r: any) => (
+                                    <Popconfirm
+                                      title="Remove this row?"
+                                      okText="Remove"
+                                      cancelText="Cancel"
+                                      disabled={String(so?.status || '') !== 'DRAFTED'}
+                                      onConfirm={() => removeBomInlineRow(String(r?._key))}
+                                    >
+                                      <Button size="small" danger disabled={String(so?.status || '') !== 'DRAFTED'}>
+                                        Remove
+                                      </Button>
+                                    </Popconfirm>
+                                  )
                                 }
-                              },
-                              { title: 'BOM Code', dataIndex: 'bomCode', width: 160 },
-                              { title: 'Description(1)', dataIndex: 'description1', width: 220 },
-                              { title: 'Color (Description(2))', dataIndex: 'colorDescription2', width: 180 },
-                              { title: 'Unit', dataIndex: 'unit', width: 90 },
-                              { title: 'Unit Price (Foreign)', dataIndex: 'unitPriceForeign', width: 150, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
-                              { title: 'Unit Price (Domestic)', dataIndex: 'unitPriceDomestic', width: 160, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
-                              { title: 'YY', dataIndex: 'yy', width: 90, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
-                              { title: 'Exchange Rate', dataIndex: 'exchangeRate', width: 140, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
-                              { title: 'Amount (Foreign)', dataIndex: 'amountForeign', width: 150, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
-                              { title: 'Amount (Domestic)', dataIndex: 'amountDomestic', width: 160, align: 'right', render: (v: any) => (v == null ? '-' : Number(v).toLocaleString()) },
-                              { title: 'Currency', dataIndex: 'currencyId', width: 110, render: (v: any) => (v == null ? '-' : String(v)) }
-                            ] as any}
-                          />
+                              ] as any}
+                            />
+                          </Space>
                         )
                       },
                       {

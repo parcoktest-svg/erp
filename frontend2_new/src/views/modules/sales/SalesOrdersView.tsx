@@ -330,26 +330,6 @@ export default function SalesOrdersView() {
     [soLineLookups]
   )
 
-  const soLineStyleOptions = useMemo(
-    () => ((soLineLookups?.styles as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
-    [soLineLookups]
-  )
-
-  const soLineCuttingNoOptions = useMemo(
-    () => ((soLineLookups?.cuttingNos as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
-    [soLineLookups]
-  )
-
-  const soLineColorOptions = useMemo(
-    () => ((soLineLookups?.colors as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
-    [soLineLookups]
-  )
-
-  const soLineDestinationOptions = useMemo(
-    () => ((soLineLookups?.destinations as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
-    [soLineLookups]
-  )
-
   const productLabelById = useMemo(() => {
     const m = new Map<string, string>()
     for (const p of products || []) {
@@ -838,7 +818,7 @@ export default function SalesOrdersView() {
       orderType: 'DOMESTIC',
       orderDate: dayjs(),
       priceListVersionId: priceListVersions[0]?.id,
-      lines: [{ itemType: 'ALL', productId: products[0]?.id ?? null, qty: 1 }],
+      lines: [{ itemType: 'ALL', productId: null, qty: null, unitPrice: null }],
       deliverySchedules: []
     })
     setOpen(true)
@@ -876,6 +856,7 @@ export default function SalesOrdersView() {
 
         lines: Array.isArray(detail.lines)
           ? detail.lines.map((l: any) => ({
+              id: l.id ?? null,
               itemType:
                 products.find((p: any) => String(p?.id) === String(l.productId))?.itemType != null
                   ? String(products.find((p: any) => String(p?.id) === String(l.productId))?.itemType)
@@ -948,7 +929,44 @@ export default function SalesOrdersView() {
     let values: any
     try {
       values = await form.validateFields()
-    } catch {
+    } catch (e: any) {
+      if (e?.errorFields) {
+        const labelByField: Record<string, string> = {
+          orgId: 'Org',
+          orderType: 'Order Type',
+          businessPartnerId: 'Customer',
+          priceListVersionId: 'Price List Version',
+          orderDate: 'Order Date'
+        }
+
+        const missing = (e.errorFields || [])
+          .map((x: any) => {
+            const path = Array.isArray(x?.name) ? x.name : []
+            const top = path?.[0]
+            if (top === 'lines') {
+              const idx = path?.[1]
+              const f = path?.[2]
+              if (f === 'productId') return `Lines[${idx + 1}] Item Name`
+              if (f === 'qty') return `Lines[${idx + 1}] Qty`
+              return `Lines[${idx + 1}] ${String(f || '')}`.trim()
+            }
+            return labelByField[String(top)] || String(top || '')
+          })
+          .filter(Boolean)
+
+        const first = (e.errorFields || [])[0]
+        const firstName = first?.name
+        if (firstName) {
+          try {
+            form.scrollToField(firstName)
+          } catch {
+            // ignore
+          }
+        }
+
+        message.error(missing.length ? `Please fill required: ${missing.join(', ')}` : 'Please complete required fields')
+        return
+      }
       message.error('Please complete required fields')
       return
     }
@@ -1237,11 +1255,19 @@ export default function SalesOrdersView() {
           <Form.List name="lines">
             {(fields, { add, remove }) => (
               <Space direction="vertical" style={{ width: '100%' }} size={8}>
-                {fields.map((field) => (
-                  <Card key={field.key} size="small">
-                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                      <Space wrap style={{ width: '100%' }}>
-                        <Form.Item {...field} name={[field.name, 'itemType']} label="Item Type" style={{ width: 200 }}>
+                <Table
+                  size="small"
+                  rowKey={(row: any) => String(row?._key)}
+                  pagination={false}
+                  scroll={{ x: 1200 }}
+                  dataSource={fields.map((f) => ({ _idx: f.name, _key: f.key, _fieldKey: f.fieldKey }))}
+                  columns={[
+                    {
+                      title: 'Item Type',
+                      dataIndex: 'itemType',
+                      width: 160,
+                      render: (_: any, r: any) => (
+                        <Form.Item name={[r._idx, 'itemType']} fieldKey={[r._fieldKey, 'itemType']} style={{ marginBottom: 0 }}>
                           <Select
                             placeholder="Selection"
                             options={[
@@ -1251,150 +1277,135 @@ export default function SalesOrdersView() {
                               { label: 'Semifinished Goods', value: 'SEMIFINISHED_GOODS' }
                             ]}
                             onChange={() => {
-                              form.setFieldValue(['lines', field.name, 'productId'], null)
+                              form.setFieldValue(['lines', r._idx, 'productId'], null)
                             }}
                           />
                         </Form.Item>
-                        <Form.Item label="Item Name" style={{ width: 420 }}>
-                          <Form.Item
-                            noStyle
-                            shouldUpdate={(prev, next) =>
-                              prev?.lines?.[field.name]?.itemType !== next?.lines?.[field.name]?.itemType
-                            }
-                          >
-                            {() => {
-                              const t = String(form.getFieldValue(['lines', field.name, 'itemType']) || 'ALL')
-                                .trim()
-                                .toUpperCase()
-                              const opts = productOptionsByItemType[t] || productOptionsByItemType.ALL || productOptions
-
-                              return (
-                                <Form.Item
-                                  {...field}
-                                  name={[field.name, 'productId']}
-                                  rules={[{ required: true, message: 'Please enter Item Name' }]}
-                                  noStyle
-                                >
-                                  <Select
-                                    key={t}
-                                    showSearch
-                                    options={opts}
-                                    optionFilterProp="label"
-                                    placeholder="Selection"
-                                  />
-                                </Form.Item>
-                              )
-                            }}
-                          </Form.Item>
+                      )
+                    },
+                    {
+                      title: 'Item Name',
+                      dataIndex: 'productId',
+                      width: 360,
+                      render: (_: any, r: any) => (
+                        <Form.Item
+                          shouldUpdate={(prev, next) => prev?.lines?.[r._idx]?.itemType !== next?.lines?.[r._idx]?.itemType}
+                          style={{ marginBottom: 0 }}
+                        >
+                          {() => {
+                            const t = String(form.getFieldValue(['lines', r._idx, 'itemType']) || 'ALL')
+                              .trim()
+                              .toUpperCase()
+                            const opts = productOptionsByItemType[t] || productOptionsByItemType.ALL || productOptions
+                            return (
+                              <Form.Item
+                                name={[r._idx, 'productId']}
+                                fieldKey={[r._fieldKey, 'productId']}
+                                rules={[{ required: true, message: 'Please enter Item Name' }]}
+                                style={{ marginBottom: 0 }}
+                              >
+                                <Select key={t} showSearch options={opts} optionFilterProp="label" placeholder="Selection" />
+                              </Form.Item>
+                            )
+                          }}
                         </Form.Item>
-                        <Form.Item {...field} name={[field.name, 'qty']} label="Qty" rules={[{ required: true }]} style={{ width: 160 }}>
+                      )
+                    },
+                    {
+                      title: 'Qty',
+                      dataIndex: 'qty',
+                      width: 120,
+                      render: (_: any, r: any) => (
+                        <Form.Item name={[r._idx, 'qty']} fieldKey={[r._fieldKey, 'qty']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
                           <InputNumber style={{ width: '100%' }} min={0.0001} placeholder="0" />
                         </Form.Item>
-                        {orderType === 'DOMESTIC' ? (
-                          <Form.Item {...field} name={[field.name, 'unitPrice']} label="Unit Price" style={{ width: 160 }}>
-                            <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
-                          </Form.Item>
-                        ) : null}
-                        <Button danger onClick={() => remove(field.name)} disabled={fields.length <= 1}>
-                          Remove
-                        </Button>
-                      </Space>
-
-                      {orderType === 'DOMESTIC' ? (
+                      )
+                    },
+                    ...(orderType === 'DOMESTIC'
+                      ? [
+                          {
+                            title: 'Unit Price',
+                            dataIndex: 'unitPrice',
+                            width: 140,
+                            render: (_: any, r: any) => (
+                              <Form.Item name={[r._idx, 'unitPrice']} fieldKey={[r._fieldKey, 'unitPrice']} style={{ marginBottom: 0 }}>
+                                <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
+                              </Form.Item>
+                            )
+                          }
+                        ]
+                      : []),
+                    {
+                      title: 'Description',
+                      dataIndex: 'description',
+                      width: 220,
+                      render: (_: any, r: any) => (
+                        <Form.Item name={[r._idx, 'description']} fieldKey={[r._fieldKey, 'description']} style={{ marginBottom: 0 }}>
+                          <Input />
+                        </Form.Item>
+                      )
+                    },
+                    {
+                      title: 'Unit',
+                      dataIndex: 'unit',
+                      width: 140,
+                      render: (_: any, r: any) => (
+                        <Form.Item name={[r._idx, 'unit']} fieldKey={[r._fieldKey, 'unit']} style={{ marginBottom: 0 }}>
+                          <Select allowClear showSearch options={soLineUnitOptions} optionFilterProp="label" placeholder="Selection" />
+                        </Form.Item>
+                      )
+                    },
+                    {
+                      title: 'Size',
+                      dataIndex: 'size',
+                      width: 140,
+                      render: (_: any, r: any) => (
+                        <Form.Item name={[r._idx, 'size']} fieldKey={[r._fieldKey, 'size']} style={{ marginBottom: 0 }}>
+                          <Select allowClear showSearch options={soLineSizeOptions} optionFilterProp="label" placeholder="Selection" />
+                        </Form.Item>
+                      )
+                    },
+                    {
+                      title: 'National Size',
+                      dataIndex: 'nationalSize',
+                      width: 160,
+                      render: (_: any, r: any) => (
+                        <Form.Item name={[r._idx, 'nationalSize']} fieldKey={[r._fieldKey, 'nationalSize']} style={{ marginBottom: 0 }}>
+                          <Select allowClear showSearch options={soLineNationalSizeOptions} optionFilterProp="label" placeholder="Selection" />
+                        </Form.Item>
+                      )
+                    },
+                    {
+                      title: 'Action',
+                      key: 'action',
+                      width: 110,
+                      fixed: 'right',
+                      render: (_: any, r: any) => (
                         <>
-                          <Space wrap style={{ width: '100%' }}>
-                            <Form.Item {...field} name={[field.name, 'description']} label="Description" style={{ width: 420 }}>
-                              <Input />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'unit']} label="Unit" style={{ width: 160 }}>
-                              <Select allowClear showSearch options={soLineUnitOptions} optionFilterProp="label" placeholder="Selection" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'size']} label="Size" style={{ width: 160 }}>
-                              <Select allowClear showSearch options={soLineSizeOptions} optionFilterProp="label" placeholder="Selection" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'nationalSize']} label="National Size" style={{ width: 160 }}>
-                              <Select allowClear showSearch options={soLineNationalSizeOptions} optionFilterProp="label" placeholder="Selection" />
-                            </Form.Item>
-                          </Space>
-                          <Space wrap style={{ width: '100%' }}>
-                            <Form.Item {...field} name={[field.name, 'style']} label="Style" style={{ width: 160 }}>
-                              <Select allowClear showSearch options={soLineStyleOptions} optionFilterProp="label" placeholder="Selection" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'cuttingNo']} label="Cutting No" style={{ width: 160 }}>
-                              <Select allowClear showSearch options={soLineCuttingNoOptions} optionFilterProp="label" placeholder="Selection" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'color']} label="Color" style={{ width: 160 }}>
-                              <Select allowClear showSearch options={soLineColorOptions} optionFilterProp="label" placeholder="Selection" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'destination']} label="Destination" style={{ width: 220 }}>
-                              <Select allowClear showSearch options={soLineDestinationOptions} optionFilterProp="label" placeholder="Selection" />
-                            </Form.Item>
-                          </Space>
-                          <Space wrap style={{ width: '100%' }}>
-                            <Form.Item {...field} name={[field.name, 'supplyAmount']} label="Supply" style={{ width: 160 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'vatAmount']} label="VAT" style={{ width: 160 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'fobPrice']} label="FOB" style={{ width: 160 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'ldpPrice']} label="LDP" style={{ width: 160 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
-                            </Form.Item>
-                          </Space>
+                          <Form.Item name={[r._idx, 'id']} fieldKey={[r._fieldKey, 'id']} style={{ display: 'none' }}>
+                            <Input />
+                          </Form.Item>
+                          <Button danger onClick={() => remove(r._idx)} disabled={fields.length <= 1}>
+                            Remove
+                          </Button>
                         </>
-                      ) : null}
+                      )
+                    }
+                  ]}
+                />
 
-                      {(orderType === 'DOMESTIC' || orderType === 'EXPORT') && orderType ? (
-                        <Space wrap style={{ width: '100%' }}>
-                          <Form.Item {...field} name={[field.name, 'cmtCost']} label="CMT Cost" style={{ width: 160 }}>
-                            <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
-                          </Form.Item>
-                          <Form.Item {...field} name={[field.name, 'cmCost']} label="CM Cost" style={{ width: 160 }}>
-                            <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
-                          </Form.Item>
-                          <Form.Item {...field} name={[field.name, 'fabricEta']} label="Fabric ETA" style={{ width: 200 }}>
-                            <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
-                          </Form.Item>
-                          <Form.Item {...field} name={[field.name, 'fabricEtd']} label="Fabric ETD" style={{ width: 200 }}>
-                            <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
-                          </Form.Item>
-                        </Space>
-                      ) : null}
-
-                      {orderType === 'EXPORT' ? (
-                        <>
-                          <Space wrap style={{ width: '100%' }}>
-                            <Form.Item {...field} name={[field.name, 'dpPrice']} label="DP Price" style={{ width: 200 }}>
-                              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'deliveryDate']} label="Delivery Date" style={{ width: 200 }}>
-                              <DatePicker style={{ width: '100%' }} placeholder="DD-MM-YYYY" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'shipMode']} label="Ship Mode" style={{ width: 200 }}>
-                              <Input placeholder="Selection" />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'factory']} label="Factory" style={{ width: 200 }}>
-                              <Input placeholder="Selection" />
-                            </Form.Item>
-                          </Space>
-                          <Space wrap style={{ width: '100%' }}>
-                            <Form.Item {...field} name={[field.name, 'remark']} label="Remark" style={{ width: 420 }}>
-                              <Input />
-                            </Form.Item>
-                            <Form.Item {...field} name={[field.name, 'filePath']} label="File Path" style={{ width: 420 }}>
-                              <Input />
-                            </Form.Item>
-                          </Space>
-                        </>
-                      ) : null}
-                    </Space>
-                  </Card>
-                ))}
-
-                <Button onClick={() => add({ itemType: 'ALL', productId: products[0]?.id ?? null, qty: 1 })}>Add Item</Button>
+                <Button
+                  onClick={() =>
+                    add({
+                      itemType: 'ALL',
+                      productId: null,
+                      qty: null,
+                      unitPrice: null
+                    })
+                  }
+                >
+                  Add Item
+                </Button>
               </Space>
             )}
           </Form.List>

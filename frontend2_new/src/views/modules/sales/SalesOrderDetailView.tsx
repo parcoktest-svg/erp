@@ -458,7 +458,37 @@ export default function SalesOrderDetailView() {
   }, [bomProductId, so?.lines])
 
   const patchBomInlineRow = (rowKey: string, patch: any) => {
-    setBomInlineRows((prev) => prev.map((r: any) => (String(r?._key) === String(rowKey) ? { ...r, ...patch } : r)))
+    setBomInlineRows((prev) =>
+      prev.map((r: any) => {
+        if (String(r?._key) !== String(rowKey)) return r
+
+        const next = { ...r, ...patch }
+
+        const foreign = next?.unitPriceForeign
+        const rate = next?.exchangeRate
+        const yy = next?.yy
+
+        if (foreign != null && rate != null) {
+          next.unitPriceDomestic = Number(foreign) * Number(rate)
+        } else if (patch?.unitPriceForeign !== undefined || patch?.exchangeRate !== undefined) {
+          next.unitPriceDomestic = null
+        }
+
+        if (yy != null && next?.unitPriceForeign != null) {
+          next.amountForeign = Number(next.unitPriceForeign) * Number(yy)
+        } else if (patch?.yy !== undefined || patch?.unitPriceForeign !== undefined) {
+          next.amountForeign = null
+        }
+
+        if (yy != null && next?.unitPriceDomestic != null) {
+          next.amountDomestic = Number(next.unitPriceDomestic) * Number(yy)
+        } else if (patch?.yy !== undefined || patch?.unitPriceForeign !== undefined || patch?.exchangeRate !== undefined) {
+          next.amountDomestic = null
+        }
+
+        return next
+      })
+    )
   }
 
   const addBomInlineRow = () => {
@@ -1601,15 +1631,14 @@ export default function SalesOrderDetailView() {
                                 {
                                   title: 'Unit Price (Domestic)',
                                   dataIndex: 'unitPriceDomestic',
-                                  width: 170,
+                                  width: 160,
                                   align: 'right',
                                   render: (_: any, r: any) => (
                                     <InputNumber
                                       style={{ width: '100%' }}
                                       min={0}
                                       value={r?.unitPriceDomestic ?? undefined}
-                                      disabled={String(so?.status || '') !== 'DRAFTED'}
-                                      onChange={(v) => patchBomInlineRow(String(r?._key), { unitPriceDomestic: v == null ? null : Number(v) })}
+                                      disabled
                                     />
                                   )
                                 },
@@ -1653,8 +1682,7 @@ export default function SalesOrderDetailView() {
                                       style={{ width: '100%' }}
                                       min={0}
                                       value={r?.amountForeign ?? undefined}
-                                      disabled={String(so?.status || '') !== 'DRAFTED'}
-                                      onChange={(v) => patchBomInlineRow(String(r?._key), { amountForeign: v == null ? null : Number(v) })}
+                                      disabled
                                     />
                                   )
                                 },
@@ -1668,8 +1696,7 @@ export default function SalesOrderDetailView() {
                                       style={{ width: '100%' }}
                                       min={0}
                                       value={r?.amountDomestic ?? undefined}
-                                      disabled={String(so?.status || '') !== 'DRAFTED'}
-                                      onChange={(v) => patchBomInlineRow(String(r?._key), { amountDomestic: v == null ? null : Number(v) })}
+                                      disabled
                                     />
                                   )
                                 },
@@ -2146,7 +2173,19 @@ export default function SalesOrderDetailView() {
                     onChange={(v) => {
                       setBomEditRows((prev) => {
                         const arr = [...(prev || [])]
-                        arr[idx] = { ...arr[idx], unitPriceForeign: v }
+                        const next = { ...arr[idx], unitPriceForeign: v }
+                        const foreign = next?.unitPriceForeign
+                        const rate = next?.exchangeRate
+                        const yy = next?.yy
+                        if (foreign != null && rate != null) next.unitPriceDomestic = Number(foreign) * Number(rate)
+                        else next.unitPriceDomestic = null
+
+                        if (yy != null && foreign != null) next.amountForeign = Number(foreign) * Number(yy)
+                        else next.amountForeign = null
+
+                        if (yy != null && next?.unitPriceDomestic != null) next.amountDomestic = Number(next.unitPriceDomestic) * Number(yy)
+                        else next.amountDomestic = null
+                        arr[idx] = next
                         return arr
                       })
                     }}
@@ -2163,13 +2202,7 @@ export default function SalesOrderDetailView() {
                     min={0}
                     placeholder="0"
                     value={r.unitPriceDomestic ?? undefined}
-                    onChange={(v) => {
-                      setBomEditRows((prev) => {
-                        const arr = [...(prev || [])]
-                        arr[idx] = { ...arr[idx], unitPriceDomestic: v }
-                        return arr
-                      })
-                    }}
+                    disabled
                   />
                 )
               },
@@ -2186,7 +2219,15 @@ export default function SalesOrderDetailView() {
                     onChange={(v) => {
                       setBomEditRows((prev) => {
                         const arr = [...(prev || [])]
-                        arr[idx] = { ...arr[idx], yy: v }
+                        const next = { ...arr[idx], yy: v }
+                        const foreign = next?.unitPriceForeign
+                        const yy = next?.yy
+                        if (yy != null && foreign != null) next.amountForeign = Number(foreign) * Number(yy)
+                        else next.amountForeign = null
+
+                        if (yy != null && next?.unitPriceDomestic != null) next.amountDomestic = Number(next.unitPriceDomestic) * Number(yy)
+                        else next.amountDomestic = null
+                        arr[idx] = next
                         return arr
                       })
                     }}
@@ -2206,7 +2247,19 @@ export default function SalesOrderDetailView() {
                     onChange={(v) => {
                       setBomEditRows((prev) => {
                         const arr = [...(prev || [])]
-                        arr[idx] = { ...arr[idx], exchangeRate: v }
+                        const next = { ...arr[idx], exchangeRate: v }
+                        const foreign = next?.unitPriceForeign
+                        const rate = next?.exchangeRate
+                        const yy = next?.yy
+                        if (foreign != null && rate != null) next.unitPriceDomestic = Number(foreign) * Number(rate)
+                        else next.unitPriceDomestic = null
+
+                        if (yy != null && foreign != null) next.amountForeign = Number(foreign) * Number(yy)
+                        else next.amountForeign = null
+
+                        if (yy != null && next?.unitPriceDomestic != null) next.amountDomestic = Number(next.unitPriceDomestic) * Number(yy)
+                        else next.amountDomestic = null
+                        arr[idx] = next
                         return arr
                       })
                     }}
@@ -2223,13 +2276,7 @@ export default function SalesOrderDetailView() {
                     min={0}
                     placeholder="0"
                     value={r.amountForeign ?? undefined}
-                    onChange={(v) => {
-                      setBomEditRows((prev) => {
-                        const arr = [...(prev || [])]
-                        arr[idx] = { ...arr[idx], amountForeign: v }
-                        return arr
-                      })
-                    }}
+                    disabled
                   />
                 )
               },
@@ -2243,13 +2290,7 @@ export default function SalesOrderDetailView() {
                     min={0}
                     placeholder="0"
                     value={r.amountDomestic ?? undefined}
-                    onChange={(v) => {
-                      setBomEditRows((prev) => {
-                        const arr = [...(prev || [])]
-                        arr[idx] = { ...arr[idx], amountDomestic: v }
-                        return arr
-                      })
-                    }}
+                    disabled
                   />
                 )
               },

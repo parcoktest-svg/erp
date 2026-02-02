@@ -1321,6 +1321,16 @@ export default function SalesOrdersView() {
                         </Form.Item>
                       )
                     },
+                    {
+                      title: 'Size',
+                      dataIndex: 'size',
+                      width: 140,
+                      render: (_: any, r: any) => (
+                        <Form.Item name={[r._idx, 'size']} fieldKey={[r._fieldKey, 'size']} style={{ marginBottom: 0 }}>
+                          <Select allowClear showSearch options={soLineSizeOptions} optionFilterProp="label" placeholder="Selection" />
+                        </Form.Item>
+                      )
+                    },
                     ...(orderType === 'DOMESTIC'
                       ? [
                           {
@@ -1352,16 +1362,6 @@ export default function SalesOrdersView() {
                       render: (_: any, r: any) => (
                         <Form.Item name={[r._idx, 'unit']} fieldKey={[r._fieldKey, 'unit']} style={{ marginBottom: 0 }}>
                           <Select allowClear showSearch options={soLineUnitOptions} optionFilterProp="label" placeholder="Selection" />
-                        </Form.Item>
-                      )
-                    },
-                    {
-                      title: 'Size',
-                      dataIndex: 'size',
-                      width: 140,
-                      render: (_: any, r: any) => (
-                        <Form.Item name={[r._idx, 'size']} fieldKey={[r._fieldKey, 'size']} style={{ marginBottom: 0 }}>
-                          <Select allowClear showSearch options={soLineSizeOptions} optionFilterProp="label" placeholder="Selection" />
                         </Form.Item>
                       )
                     },

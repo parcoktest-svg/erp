@@ -1361,7 +1361,7 @@ export default function SalesOrderDetailView() {
           items={[
             {
               key: 'lines',
-              label: 'Lines',
+              label: 'Items',
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space style={{ width: '100%', justifyContent: 'flex-end' }}>

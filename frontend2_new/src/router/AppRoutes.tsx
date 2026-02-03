@@ -15,6 +15,7 @@ import UomsView from '@/views/modules/masterdata/UomsView'
 import BusinessPartnersView from '@/views/modules/masterdata/BusinessPartnersView'
 import CurrenciesView from '@/views/modules/masterdata/CurrenciesView'
 import ProductsView from '@/views/modules/masterdata/ProductsView'
+import MaterialsView from '@/views/modules/masterdata/MaterialsView'
 import PriceListsView from '@/views/modules/masterdata/PriceListsView'
 import PriceListVersionsView from '@/views/modules/masterdata/PriceListVersionsView'
 import ProductPricesView from '@/views/modules/masterdata/ProductPricesView'
@@ -98,6 +99,7 @@ export default function AppRoutes() {
           <Route path="/modules/masterdata/business-partners" element={<BusinessPartnersView />} />
           <Route path="/modules/masterdata/currencies" element={<CurrenciesView />} />
           <Route path="/modules/masterdata/products" element={<ProductsView />} />
+          <Route path="/modules/masterdata/materials" element={<MaterialsView />} />
           <Route path="/modules/masterdata/price-lists" element={<PriceListsView />} />
           <Route path="/modules/masterdata/price-list-versions" element={<PriceListVersionsView />} />
           <Route path="/modules/masterdata/product-prices" element={<ProductPricesView />} />

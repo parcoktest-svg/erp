@@ -754,6 +754,21 @@ export default function SalesOrderDetailView() {
     }
   }
 
+  const soLineStyleOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const l of (so?.lines || []) as any[]) {
+      const s = String(l?.style ?? '').trim()
+      if (s) set.add(s)
+    }
+    for (const l of (lineEditRows || []) as any[]) {
+      const s = String(l?.style ?? '').trim()
+      if (s) set.add(s)
+    }
+    return Array.from(set)
+      .sort((a, b) => a.localeCompare(b))
+      .map((s) => ({ label: s, value: s }))
+  }, [lineEditRows, so?.lines])
+
   const lineColumns: any[] = [
     {
       title: 'Item Name',
@@ -792,10 +807,16 @@ export default function SalesOrderDetailView() {
       dataIndex: 'style',
       width: 160,
       render: (_: any, r: any) => (
-        <Input
-          value={r?.style ?? ''}
+        <Select
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          placeholder="Selection"
+          style={{ width: '100%' }}
+          value={r?.style ?? undefined}
+          options={soLineStyleOptions}
           disabled={String(so?.status || '') !== 'DRAFTED'}
-          onChange={(e) => patchLineRow(String(r?._key), { style: e.target.value || null })}
+          onChange={(v) => patchLineRow(String(r?._key), { style: v ?? null })}
         />
       )
     },
@@ -1534,7 +1555,7 @@ export default function SalesOrderDetailView() {
                                   render: () => (bomProductId == null ? '-' : productLabelById.get(Number(bomProductId)) || `Product ${bomProductId}`)
                                 },
                                 {
-                                  title: 'Style',
+                                  title: 'Item Type',
                                   dataIndex: 'componentProductId',
                                   width: 260,
                                   render: (_: any, r: any) => (
@@ -2048,7 +2069,7 @@ export default function SalesOrderDetailView() {
             loading={bomProductsLoading || bomCurrenciesLoading}
             columns={[
               {
-                title: 'Component',
+                title: 'Item Type',
                 dataIndex: 'componentProductId',
                 width: 260,
                 render: (_: any, r: any, idx: number) => (

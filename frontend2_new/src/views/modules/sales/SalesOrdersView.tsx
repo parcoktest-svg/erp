@@ -212,25 +212,6 @@ export default function SalesOrdersView() {
     [orgs]
   )
 
-  const productOptions = useMemo(
-    () => (products || []).map((p: any) => ({ label: `${p.code} - ${p.name}`, value: p.id })),
-    [products]
-  )
-
-  const productOptionsByItemType = useMemo(() => {
-    const all = (products || []).map((p: any) => ({ label: `${p.code} - ${p.name}`, value: p.id }))
-    const map: Record<string, any[]> = {
-      ALL: all
-    }
-    for (const p of products || []) {
-      const t = String((p as any)?.itemType || '').trim().toUpperCase()
-      if (!t) continue
-      if (!map[t]) map[t] = []
-      map[t].push({ label: `${(p as any).code} - ${(p as any).name}`, value: (p as any).id })
-    }
-    return map
-  }, [products])
-
   const customerOptions = useMemo(
     () => (customers || []).map((c: any) => ({ label: c.name || c.code || String(c.id), value: c.id })),
     [customers]
@@ -653,20 +634,20 @@ export default function SalesOrdersView() {
   }
 
   function canEditRow(r: SalesOrderRow) {
-    return (r.status || '') === 'DRAFTED'
+    return String(r.status || '').toUpperCase() === 'DRAFTED'
   }
 
   function canApproveRow(r: SalesOrderRow) {
-    return (r.status || '') === 'DRAFTED'
+    return String(r.status || '').toUpperCase() === 'DRAFTED'
   }
 
   function canVoidRow(r: SalesOrderRow) {
-    const s = String(r.status || '')
+    const s = String(r.status || '').toUpperCase()
     return s === 'DRAFTED' || s === 'APPROVED'
   }
 
   function canShipRow(r: SalesOrderRow) {
-    const s = String(r.status || '')
+    const s = String(r.status || '').toUpperCase()
     return s === 'APPROVED' || s === 'PARTIALLY_COMPLETED'
   }
 
@@ -946,7 +927,7 @@ export default function SalesOrdersView() {
             if (top === 'lines') {
               const idx = path?.[1]
               const f = path?.[2]
-              if (f === 'productId') return `Lines[${idx + 1}] Item Name`
+              if (f === 'productId') return `Lines[${idx + 1}] Style`
               if (f === 'qty') return `Lines[${idx + 1}] Qty`
               return `Lines[${idx + 1}] ${String(f || '')}`.trim()
             }
@@ -1284,32 +1265,29 @@ export default function SalesOrdersView() {
                       )
                     },
                     {
-                      title: 'Item Name',
+                      title: 'Style',
                       dataIndex: 'productId',
                       width: 360,
-                      render: (_: any, r: any) => (
-                        <Form.Item
-                          shouldUpdate={(prev, next) => prev?.lines?.[r._idx]?.itemType !== next?.lines?.[r._idx]?.itemType}
-                          style={{ marginBottom: 0 }}
-                        >
-                          {() => {
-                            const t = String(form.getFieldValue(['lines', r._idx, 'itemType']) || 'ALL')
-                              .trim()
-                              .toUpperCase()
-                            const opts = productOptionsByItemType[t] || productOptionsByItemType.ALL || productOptions
-                            return (
-                              <Form.Item
-                                name={[r._idx, 'productId']}
-                                fieldKey={[r._fieldKey, 'productId']}
-                                rules={[{ required: true, message: 'Please enter Item Name' }]}
-                                style={{ marginBottom: 0 }}
-                              >
-                                <Select key={t} showSearch options={opts} optionFilterProp="label" placeholder="Selection" />
-                              </Form.Item>
-                            )
-                          }}
-                        </Form.Item>
-                      )
+                      render: (_: any, r: any) => {
+                        const itemType = form.getFieldValue(['lines', r._idx, 'itemType'])
+                        const t = String(itemType || 'ALL')
+                        const opts = (products || [])
+                          .filter((p: any) => t === 'ALL' || String((p as any)?.itemType || '').toUpperCase() === t)
+                          .map((p: any) => ({ label: `${p.code} - ${p.name}`, value: p.id }))
+
+                        return (
+                          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                            <Form.Item
+                              name={[r._idx, 'productId']}
+                              fieldKey={[r._fieldKey, 'productId']}
+                              rules={[{ required: true, message: 'Please enter Style' }]}
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Select showSearch options={opts} optionFilterProp="label" placeholder="Selection" />
+                            </Form.Item>
+                          </Space>
+                        )
+                      }
                     },
                     {
                       title: 'Qty',

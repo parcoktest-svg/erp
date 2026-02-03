@@ -426,6 +426,12 @@ public class SalesOrderService {
         if (so.getStatus() != DocumentStatus.DRAFTED) {
             throw new IllegalArgumentException("Only DRAFTED Sales Order can be deleted");
         }
+
+        // SalesOrderLineBom references SalesOrderLine. Delete BOM snapshots first to avoid FK constraint errors.
+        List<SalesOrderLineBom> boms = salesOrderLineBomRepository.findBySalesOrderLine_SalesOrder_Id(so.getId());
+        if (boms != null && !boms.isEmpty()) {
+            salesOrderLineBomRepository.deleteAll(boms);
+        }
         salesOrderRepository.delete(so);
     }
 

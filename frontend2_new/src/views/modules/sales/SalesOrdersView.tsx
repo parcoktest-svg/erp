@@ -297,17 +297,29 @@ export default function SalesOrdersView() {
   )
 
   const soLineUnitOptions = useMemo(
-    () => ((soLineLookups?.units as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    () => {
+      const raw = ((soLineLookups as any)?.units || (soLineLookups as any)?.unit || []) as any[]
+      return (raw || []).map((v: any) => ({ label: String(v), value: String(v) }))
+    },
     [soLineLookups]
   )
 
   const soLineSizeOptions = useMemo(
-    () => ((soLineLookups?.sizes as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    () => {
+      const raw = ((soLineLookups as any)?.sizes || (soLineLookups as any)?.size || []) as any[]
+      const arr = (raw || []).map((v: any) => String(v)).filter((v: any) => v)
+      const fallback = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+      const list = arr.length ? arr : fallback
+      return list.map((v: any) => ({ label: String(v), value: String(v) }))
+    },
     [soLineLookups]
   )
 
   const soLineNationalSizeOptions = useMemo(
-    () => ((soLineLookups?.nationalSizes as any[]) || []).map((v: any) => ({ label: String(v), value: String(v) })),
+    () => {
+      const raw = ((soLineLookups as any)?.nationalSizes || (soLineLookups as any)?.nationalSize || []) as any[]
+      return (raw || []).map((v: any) => ({ label: String(v), value: String(v) }))
+    },
     [soLineLookups]
   )
 
@@ -788,63 +800,47 @@ export default function SalesOrdersView() {
     }
   }
 
-  async function openCreate() {
-    if (companyId && priceListVersions.length === 0) {
-      await loadLookups(companyId)
-    }
-    setEditId(null)
-    form.resetFields()
-    form.setFieldsValue({
-      orgId: null,
-      orderType: 'DOMESTIC',
-      orderDate: dayjs(),
-      priceListVersionId: priceListVersions[0]?.id,
-      lines: [{ itemType: 'ALL', productId: null, qty: null, unitPrice: null }],
-      deliverySchedules: []
-    })
-    setOpen(true)
-  }
-
   async function openEdit(row: SalesOrderRow) {
     if (!companyId) return
+    if (!row?.id) return
     setSaving(true)
     try {
+      if (priceListVersions.length === 0 || products.length === 0 || !soLineLookups) {
+        await loadLookups(companyId)
+      }
+
       const detail = await salesApi.getSalesOrder(companyId, row.id)
+      const orderType = String(detail?.orderType || 'DOMESTIC')
+      const productsList = Array.isArray(products) ? products : []
+
       setEditId(detail?.id ?? row.id)
-
-      const orderType: SalesOrderType = (detail.orderType || 'DOMESTIC') as SalesOrderType
-
       form.resetFields()
       form.setFieldsValue({
-        orgId: detail.orgId ?? null,
+        orgId: detail?.orgId ?? null,
         orderType,
-        businessPartnerId: detail.businessPartnerId ?? null,
-        priceListVersionId: detail.priceListVersionId ?? null,
-        orderDate: detail.orderDate ? dayjs(detail.orderDate) : dayjs(),
+        businessPartnerId: detail?.businessPartnerId ?? null,
+        priceListVersionId: detail?.priceListVersionId ?? priceListVersions[0]?.id,
+        orderDate: detail?.orderDate ? dayjs(detail.orderDate) : dayjs(),
 
-        buyerPo: detail.buyerPo || '',
-        departmentId: detail.departmentId ?? null,
-        employeeId: detail.employeeId ?? null,
-        inCharge: detail.inCharge || '',
-        paymentCondition: detail.paymentCondition || '',
-        deliveryPlace: detail.deliveryPlace || '',
-        forwardingWarehouseId: detail.forwardingWarehouseId ?? null,
-        memo: detail.memo || '',
+        buyerPo: detail?.buyerPo ?? '',
+        departmentId: detail?.departmentId ?? null,
+        employeeId: detail?.employeeId ?? null,
+        inCharge: detail?.inCharge ?? '',
+        paymentCondition: detail?.paymentCondition ?? '',
+        deliveryPlace: detail?.deliveryPlace ?? '',
+        forwardingWarehouseId: detail?.forwardingWarehouseId ?? null,
+        currencyId: detail?.currencyId ?? null,
+        exchangeRate: detail?.exchangeRate ?? null,
+        foreignAmount: detail?.foreignAmount ?? null,
+        memo: detail?.memo ?? '',
 
-        currencyId: detail.currencyId ?? null,
-        exchangeRate: detail.exchangeRate ?? null,
-        foreignAmount: detail.foreignAmount ?? null,
-
-        lines: Array.isArray(detail.lines)
+        lines: Array.isArray(detail?.lines)
           ? detail.lines.map((l: any) => ({
-              id: l.id ?? null,
-              itemType:
-                products.find((p: any) => String(p?.id) === String(l.productId))?.itemType != null
-                  ? String(products.find((p: any) => String(p?.id) === String(l.productId))?.itemType)
-                  : 'ALL',
+              id: l.id,
+              itemType: 'FINISHED_GOODS',
               productId: l.productId ?? null,
               qty: l.qty ?? null,
-              unitPrice: l.price ?? null,
+              unitPrice: l.unitPrice ?? null,
               description: l.description ?? '',
               unit: l.unit ?? '',
               size: l.size ?? '',
@@ -868,7 +864,7 @@ export default function SalesOrdersView() {
               remark: l.remark ?? '',
               filePath: l.filePath ?? ''
             }))
-          : [{ itemType: 'ALL', productId: products[0]?.id ?? null, qty: 1 }],
+          : [{ itemType: 'FINISHED_GOODS', productId: productsList[0]?.id ?? null, qty: 1 }],
 
         deliverySchedules:
           orderType === 'DOMESTIC' && Array.isArray(detail.deliverySchedules)
@@ -890,6 +886,30 @@ export default function SalesOrdersView() {
     }
   }
 
+  async function openCreate() {
+    setSaving(true)
+    try {
+      if (companyId && (priceListVersions.length === 0 || products.length === 0 || !soLineLookups)) {
+        await loadLookups(companyId)
+      }
+      setEditId(null)
+      form.resetFields()
+      form.setFieldsValue({
+        orgId: null,
+        orderType: 'DOMESTIC',
+        orderDate: dayjs(),
+        priceListVersionId: priceListVersions[0]?.id,
+        lines: [{ itemType: 'FINISHED_GOODS', productId: null, qty: null, unitPrice: null }],
+        deliverySchedules: []
+      })
+      setOpen(true)
+    } catch (e: any) {
+      message.error(getApiErrorMessage(e, 'Failed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function onDelete(row: SalesOrderRow) {
     if (!companyId) return
     try {
@@ -901,59 +921,15 @@ export default function SalesOrdersView() {
     }
   }
 
-  async function save() {
+  async function onSubmit(values: any) {
     if (!companyId) {
       message.error('Select company first')
       return
     }
 
-    let values: any
-    try {
-      values = await form.validateFields()
-    } catch (e: any) {
-      if (e?.errorFields) {
-        const labelByField: Record<string, string> = {
-          orgId: 'Org',
-          orderType: 'Order Type',
-          businessPartnerId: 'Customer',
-          priceListVersionId: 'Price List Version',
-          orderDate: 'Order Date'
-        }
-
-        const missing = (e.errorFields || [])
-          .map((x: any) => {
-            const path = Array.isArray(x?.name) ? x.name : []
-            const top = path?.[0]
-            if (top === 'lines') {
-              const idx = path?.[1]
-              const f = path?.[2]
-              if (f === 'productId') return `Lines[${idx + 1}] Style`
-              if (f === 'qty') return `Lines[${idx + 1}] Qty`
-              return `Lines[${idx + 1}] ${String(f || '')}`.trim()
-            }
-            return labelByField[String(top)] || String(top || '')
-          })
-          .filter(Boolean)
-
-        const first = (e.errorFields || [])[0]
-        const firstName = first?.name
-        if (firstName) {
-          try {
-            form.scrollToField(firstName)
-          } catch {
-            // ignore
-          }
-        }
-
-        message.error(missing.length ? `Please fill required: ${missing.join(', ')}` : 'Please complete required fields')
-        return
-      }
-      message.error('Please complete required fields')
-      return
-    }
-
     setSaving(true)
     try {
+      message.loading({ content: 'Saving...', key: 'so-save' })
       const orderType: SalesOrderType = values.orderType || 'DOMESTIC'
 
       const payload: any = {
@@ -1018,14 +994,15 @@ export default function SalesOrdersView() {
 
       if (editId) {
         await salesApi.updateSalesOrder(companyId, editId, payload)
-        message.success('Updated')
+        message.success({ content: 'Updated', key: 'so-save' })
       } else {
         await salesApi.createSalesOrder(companyId, payload)
-        message.success('Created')
+        message.success({ content: 'Created', key: 'so-save' })
       }
       setOpen(false)
       await load(companyId)
     } catch (e: any) {
+      message.destroy('so-save')
       message.error(getApiErrorMessage(e, 'Failed'))
     } finally {
       setSaving(false)
@@ -1145,19 +1122,60 @@ export default function SalesOrdersView() {
         width={1100}
         bodyStyle={{ maxHeight: '80vh', overflowY: 'auto' }}
         onCancel={() => setOpen(false)}
+        onOk={() => form.submit()}
         footer={
           <Space>
             <Button onClick={() => setOpen(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button type="primary" loading={saving} disabled={!companyId} onClick={() => void save()}>
+            <Button type="primary" loading={saving} disabled={!companyId || saving} onClick={() => form.submit()}>
               OK
             </Button>
           </Space>
         }
         destroyOnClose
       >
-        <Form layout="vertical" form={form}>
+        <Form
+          layout="vertical"
+          form={form}
+          onFinish={(values) => void onSubmit(values)}
+          onFinishFailed={(e) => {
+            const labelByField: Record<string, string> = {
+              orgId: 'Org',
+              orderType: 'Order Type',
+              businessPartnerId: 'Customer',
+              priceListVersionId: 'Price List Version',
+              orderDate: 'Order Date'
+            }
+
+            const missing = ((e as any)?.errorFields || [])
+              .map((x: any) => {
+                const path = Array.isArray(x?.name) ? x.name : []
+                const top = path?.[0]
+                if (top === 'lines') {
+                  const idx = path?.[1]
+                  const f = path?.[2]
+                  if (f === 'productId') return `Lines[${idx + 1}] Item Name`
+                  if (f === 'qty') return `Lines[${idx + 1}] Qty`
+                  return `Lines[${idx + 1}] ${String(f || '')}`.trim()
+                }
+                return labelByField[String(top)] || String(top || '')
+              })
+              .filter(Boolean)
+
+            const first = ((e as any)?.errorFields || [])[0]
+            const firstName = first?.name
+            if (firstName) {
+              try {
+                form.scrollToField(firstName)
+              } catch {
+                // ignore
+              }
+            }
+
+            message.error(missing.length ? `Please fill required: ${missing.join(', ')}` : 'Please complete required fields')
+          }}
+        >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <Form.Item label="Org" name="orgId">
               <Select allowClear loading={orgLoading} options={orgOptions} placeholder="Selection" />
@@ -1252,10 +1270,7 @@ export default function SalesOrdersView() {
                           <Select
                             placeholder="Selection"
                             options={[
-                              { label: 'All', value: 'ALL' },
-                              { label: 'Marchandises', value: 'MARCHANDISES' },
                               { label: 'Finished Goods', value: 'FINISHED_GOODS' },
-                              { label: 'Semifinished Goods', value: 'SEMIFINISHED_GOODS' }
                             ]}
                             onChange={() => {
                               form.setFieldValue(['lines', r._idx, 'productId'], null)
@@ -1265,22 +1280,30 @@ export default function SalesOrdersView() {
                       )
                     },
                     {
-                      title: 'Style',
+                      title: 'Item Name',
                       dataIndex: 'productId',
                       width: 360,
                       render: (_: any, r: any) => {
                         const itemType = form.getFieldValue(['lines', r._idx, 'itemType'])
-                        const t = String(itemType || 'ALL')
-                        const opts = (products || [])
-                          .filter((p: any) => t === 'ALL' || String((p as any)?.itemType || '').toUpperCase() === t)
-                          .map((p: any) => ({ label: `${p.code} - ${p.name}`, value: p.id }))
+                        const t = String(itemType || 'FINISHED_GOODS')
+                        const norm = (v: any) => String(v || '').trim().toUpperCase().replace(/\s+/g, '_')
+                        const tNorm = norm(t)
+                        const allProducts = products || []
+                        const filtered = allProducts.filter((p: any) => norm((p as any)?.itemType) === tNorm)
+                        const list = filtered.length ? filtered : allProducts
+                        const opts = list
+                          .map((p: any) => ({
+                            label: String(p.name || p.code || p.id || ''),
+                            value: p.id
+                          }))
+                          .filter((o: any) => o.value != null)
 
                         return (
                           <Space direction="vertical" size={4} style={{ width: '100%' }}>
                             <Form.Item
                               name={[r._idx, 'productId']}
                               fieldKey={[r._fieldKey, 'productId']}
-                              rules={[{ required: true, message: 'Please enter Style' }]}
+                              rules={[{ required: true, message: 'Please enter Item Name' }]}
                               style={{ marginBottom: 0 }}
                             >
                               <Select showSearch options={opts} optionFilterProp="label" placeholder="Selection" />
@@ -1288,6 +1311,16 @@ export default function SalesOrdersView() {
                           </Space>
                         )
                       }
+                    },
+                    {
+                      title: 'Style',
+                      dataIndex: 'style',
+                      width: 220,
+                      render: (_: any, r: any) => (
+                        <Form.Item name={[r._idx, 'style']} fieldKey={[r._fieldKey, 'style']} style={{ marginBottom: 0 }}>
+                          <Input placeholder="Style" />
+                        </Form.Item>
+                      )
                     },
                     {
                       title: 'Qty',
@@ -1305,7 +1338,14 @@ export default function SalesOrdersView() {
                       width: 140,
                       render: (_: any, r: any) => (
                         <Form.Item name={[r._idx, 'size']} fieldKey={[r._fieldKey, 'size']} style={{ marginBottom: 0 }}>
-                          <Select allowClear showSearch options={soLineSizeOptions} optionFilterProp="label" placeholder="Selection" />
+                          <Select
+                            allowClear
+                            showSearch
+                            mode={soLineSizeOptions.length ? undefined : 'tags'}
+                            options={soLineSizeOptions}
+                            optionFilterProp="label"
+                            placeholder="Selection"
+                          />
                         </Form.Item>
                       )
                     },
@@ -1375,7 +1415,7 @@ export default function SalesOrdersView() {
                 <Button
                   onClick={() =>
                     add({
-                      itemType: 'ALL',
+                      itemType: 'FINISHED_GOODS',
                       productId: null,
                       qty: null,
                       unitPrice: null

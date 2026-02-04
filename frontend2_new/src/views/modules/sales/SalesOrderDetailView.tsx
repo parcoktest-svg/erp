@@ -621,6 +621,17 @@ export default function SalesOrderDetailView() {
     }))
   }, [bomAllProducts])
 
+  const materialSelectOptions = useMemo(() => {
+    const norm = (v: any) => String(v || '').trim().toUpperCase().replace(/\s+/g, '_')
+    return ((bomAllProducts || []) as any[])
+      .filter((p: any) => norm((p as any)?.itemType) === 'MARCHANDISES')
+      .map((p: any) => ({
+        value: Number(p.id),
+        label: String(p.name || p.code || p.id || '')
+      }))
+      .filter((o: any) => o.value)
+  }, [bomAllProducts])
+
   const patchLineRow = (rowKey: string, patch: any) => {
     setLineEditRows((prev) => prev.map((r: any) => (String(r?._key) === String(rowKey) ? { ...r, ...patch } : r)))
   }
@@ -1555,14 +1566,14 @@ export default function SalesOrderDetailView() {
                                   render: () => (bomProductId == null ? '-' : productLabelById.get(Number(bomProductId)) || `Product ${bomProductId}`)
                                 },
                                 {
-                                  title: 'Item Type',
+                                  title: 'Materials',
                                   dataIndex: 'componentProductId',
                                   width: 260,
                                   render: (_: any, r: any) => (
                                     <Select
                                       style={{ width: '100%' }}
                                       value={r?.componentProductId ?? undefined}
-                                      options={productSelectOptions}
+                                      options={materialSelectOptions}
                                       showSearch
                                       optionFilterProp="label"
                                       placeholder="Select component"
@@ -2069,7 +2080,7 @@ export default function SalesOrderDetailView() {
             loading={bomProductsLoading || bomCurrenciesLoading}
             columns={[
               {
-                title: 'Item Type',
+                title: 'Materials',
                 dataIndex: 'componentProductId',
                 width: 260,
                 render: (_: any, r: any, idx: number) => (
@@ -2078,10 +2089,7 @@ export default function SalesOrderDetailView() {
                     optionFilterProp="label"
                     placeholder="Select component"
                     style={{ width: '100%' }}
-                    options={(bomAllProducts || []).map((p: any) => ({
-                      value: p.id,
-                      label: `${p.code || p.id} - ${p.name || ''}`.trim()
-                    }))}
+                    options={materialSelectOptions}
                     value={r.componentProductId ?? undefined}
                     onChange={(v) => {
                       setBomEditRows((prev) => {

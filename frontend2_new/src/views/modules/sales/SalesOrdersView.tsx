@@ -332,6 +332,17 @@ export default function SalesOrdersView() {
     return m
   }, [products])
 
+  const materialOptions = useMemo(() => {
+    const norm = (v: any) => String(v || '').trim().toUpperCase().replace(/\s+/g, '_')
+    return (products || [])
+      .filter((p: any) => norm((p as any)?.itemType) === 'MARCHANDISES')
+      .map((p: any) => ({
+        value: p.id,
+        label: String(p.name || p.code || p.id || '')
+      }))
+      .filter((o: any) => o.value != null)
+  }, [products])
+
   const bomCurrencyOptions = useMemo(
     () => (currencies || []).map((c: any) => ({ label: `${c.code || ''} ${c.name || ''}`.trim() || String(c.id), value: c.id })),
     [currencies]
@@ -1679,10 +1690,7 @@ export default function SalesOrdersView() {
                             optionFilterProp="label"
                             placeholder="Selection"
                             style={{ width: '100%' }}
-                            options={(products || []).map((p: any) => ({
-                              value: p.id,
-                              label: `${p.code || p.id} - ${p.name || ''}`.trim()
-                            }))}
+                            options={materialOptions}
                             value={r.componentProductId ?? undefined}
                             onChange={(v) => {
                               if (!bomLineEditorLineId) return

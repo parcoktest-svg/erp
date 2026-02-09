@@ -124,6 +124,53 @@ export default function SalesOrdersView() {
     }
   }
 
+  async function handleOkClick() {
+    try {
+      const values = await form.validateFields()
+      await onSubmit(values)
+    } catch (e: any) {
+      if (e?.errorFields) {
+        const labelByField: Record<string, string> = {
+          orgId: 'Org',
+          orderType: 'Order Type',
+          businessPartnerId: 'Customer',
+          priceListVersionId: 'Price List Version',
+          orderDate: 'Order Date'
+        }
+
+        const missing = (e.errorFields || [])
+          .map((x: any) => {
+            const path = Array.isArray(x?.name) ? x.name : []
+            const top = path?.[0]
+            if (top === 'lines') {
+              const idx = path?.[1]
+              const f = path?.[2]
+              if (f === 'productId') return `Lines[${idx + 1}] Item Name`
+              if (f === 'qty') return `Lines[${idx + 1}] Qty`
+              return `Lines[${idx + 1}] ${String(f || '')}`.trim()
+            }
+            return labelByField[String(top)] || String(top || '')
+          })
+          .filter(Boolean)
+
+        const first = (e.errorFields || [])[0]
+        const firstName = first?.name
+        if (firstName) {
+          try {
+            form.scrollToField(firstName)
+          } catch {
+            // ignore
+          }
+        }
+
+        message.error(missing.length ? `Please fill required: ${missing.join(', ')}` : 'Please complete required fields')
+        return
+      }
+
+      message.error(getApiErrorMessage(e, 'Failed'))
+    }
+  }
+
   const loadLookups = async (cid: number) => {
     setOrgLoading(true)
     try {
@@ -1133,13 +1180,13 @@ export default function SalesOrdersView() {
         width={1100}
         bodyStyle={{ maxHeight: '80vh', overflowY: 'auto' }}
         onCancel={() => setOpen(false)}
-        onOk={() => form.submit()}
+        onOk={() => void handleOkClick()}
         footer={
           <Space>
             <Button onClick={() => setOpen(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button type="primary" loading={saving} disabled={!companyId || saving} onClick={() => form.submit()}>
+            <Button type="primary" loading={saving} disabled={!companyId || saving} onClick={() => void handleOkClick()}>
               OK
             </Button>
           </Space>
@@ -1300,8 +1347,10 @@ export default function SalesOrdersView() {
                         const norm = (v: any) => String(v || '').trim().toUpperCase().replace(/\s+/g, '_')
                         const tNorm = norm(t)
                         const allProducts = products || []
-                        const filtered = allProducts.filter((p: any) => norm((p as any)?.itemType) === tNorm)
-                        const list = filtered.length ? filtered : allProducts
+                        const nonMaterials = allProducts.filter((p: any) => norm((p as any)?.itemType) !== 'MARCHANDISES')
+
+                        const finishedGoods = nonMaterials.filter((p: any) => norm((p as any)?.itemType) === 'FINISHED_GOODS')
+                        const list = tNorm === 'FINISHED_GOODS' ? (finishedGoods.length ? finishedGoods : nonMaterials) : nonMaterials
                         const opts = list
                           .map((p: any) => ({
                             label: String(p.name || p.code || p.id || ''),

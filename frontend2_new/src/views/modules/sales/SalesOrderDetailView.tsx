@@ -615,10 +615,13 @@ export default function SalesOrderDetailView() {
   }, [bomAllProducts])
 
   const productSelectOptions = useMemo(() => {
-    return ((bomAllProducts || []) as any[]).map((p: any) => ({
-      value: Number(p.id),
-      label: `${p.code || p.id} - ${p.name || ''}`.trim()
-    }))
+    const norm = (v: any) => String(v || '').trim().toUpperCase().replace(/\s+/g, '_')
+    return ((bomAllProducts || []) as any[])
+      .filter((p: any) => norm((p as any)?.itemType) !== 'MARCHANDISES')
+      .map((p: any) => ({
+        value: Number(p.id),
+        label: `${p.code || p.id} - ${p.name || ''}`.trim()
+      }))
   }, [bomAllProducts])
 
   const materialSelectOptions = useMemo(() => {

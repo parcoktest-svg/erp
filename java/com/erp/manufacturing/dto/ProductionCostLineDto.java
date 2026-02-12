@@ -4,17 +4,17 @@ import java.math.BigDecimal;
 
 public class ProductionCostLineDto {
 
-    private Long componentProductId;
+    private Long componentMaterialId;
     private BigDecimal requiredQty;
     private BigDecimal unitPrice;
     private BigDecimal lineCost;
 
-    public Long getComponentProductId() {
-        return componentProductId;
+    public Long getComponentMaterialId() {
+        return componentMaterialId;
     }
 
-    public void setComponentProductId(Long componentProductId) {
-        this.componentProductId = componentProductId;
+    public void setComponentMaterialId(Long componentMaterialId) {
+        this.componentMaterialId = componentMaterialId;
     }
 
     public BigDecimal getRequiredQty() {

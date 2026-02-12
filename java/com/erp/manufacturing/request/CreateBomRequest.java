@@ -64,17 +64,17 @@ public class CreateBomRequest {
 
     public static class CreateBomLineRequest {
         @NotNull
-        private Long componentProductId;
+        private Long componentMaterialId;
 
         @NotNull
         private BigDecimal qty;
 
-        public Long getComponentProductId() {
-            return componentProductId;
+        public Long getComponentMaterialId() {
+            return componentMaterialId;
         }
 
-        public void setComponentProductId(Long componentProductId) {
-            this.componentProductId = componentProductId;
+        public void setComponentMaterialId(Long componentMaterialId) {
+            this.componentMaterialId = componentMaterialId;
         }
 
         public BigDecimal getQty() {

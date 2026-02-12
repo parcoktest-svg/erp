@@ -14,23 +14,19 @@ import com.erp.manufacturing.entity.BomLine;
 import com.erp.manufacturing.entity.WorkOrder;
 import com.erp.manufacturing.repository.BomRepository;
 import com.erp.manufacturing.repository.WorkOrderRepository;
-import com.erp.masterdata.entity.ProductPrice;
-import com.erp.masterdata.repository.ProductPriceRepository;
+import com.erp.masterdata.entity.Material;
 
 @Service
 public class ManufacturingReportService {
 
     private final WorkOrderRepository workOrderRepository;
     private final BomRepository bomRepository;
-    private final ProductPriceRepository productPriceRepository;
 
     public ManufacturingReportService(
             WorkOrderRepository workOrderRepository,
-            BomRepository bomRepository,
-            ProductPriceRepository productPriceRepository) {
+            BomRepository bomRepository) {
         this.workOrderRepository = workOrderRepository;
         this.bomRepository = bomRepository;
-        this.productPriceRepository = productPriceRepository;
     }
 
     public WipReportDto wip(Long companyId) {
@@ -82,16 +78,15 @@ public class ManufacturingReportService {
             BigDecimal required = line.getQty().multiply(qty);
 
             BigDecimal unitPrice = BigDecimal.ZERO;
-            ProductPrice pp = productPriceRepository.findByPriceListVersion_IdAndProduct_Id(priceListVersionId, line.getComponentProduct().getId())
-                    .orElse(null);
-            if (pp != null && pp.getPrice() != null) {
-                unitPrice = pp.getPrice();
+            Material m = line.getComponentMaterial();
+            if (m == null || m.getId() == null) {
+                throw new IllegalArgumentException("BOM line component material is required");
             }
 
             BigDecimal lineCost = unitPrice.multiply(required);
 
             ProductionCostLineDto l = new ProductionCostLineDto();
-            l.setComponentProductId(line.getComponentProduct().getId());
+            l.setComponentMaterialId(m.getId());
             l.setRequiredQty(required);
             l.setUnitPrice(unitPrice);
             l.setLineCost(lineCost);

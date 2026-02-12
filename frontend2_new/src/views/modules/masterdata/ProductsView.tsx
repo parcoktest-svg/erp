@@ -74,7 +74,9 @@ export default function ProductsView() {
     setLoading(true)
     try {
       const res = await masterDataApi.listProducts(cid)
-      setRows((res || []) as ProductRow[])
+      const norm = (v: any) => String(v || '').trim().toUpperCase().replace(/\s+/g, '_')
+      const filteredRes = (res || []).filter((p: any) => norm(p?.itemType) !== 'MARCHANDISES')
+      setRows(filteredRes as ProductRow[])
     } catch (e: any) {
       message.error(e?.message || 'Failed to load products')
     } finally {

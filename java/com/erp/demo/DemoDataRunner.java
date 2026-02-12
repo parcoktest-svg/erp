@@ -331,7 +331,7 @@ public class DemoDataRunner implements CommandLineRunner {
     }
 
     private static SetSalesOrderLineBomRequest.SetSalesOrderLineBomLineRequest bomLine(
-            Long componentProductId,
+            Long componentMaterialId,
             BigDecimal qty,
             String bomCode,
             String description1,
@@ -345,7 +345,7 @@ public class DemoDataRunner implements CommandLineRunner {
             BigDecimal amountDomestic,
             Long currencyId) {
         SetSalesOrderLineBomRequest.SetSalesOrderLineBomLineRequest l = new SetSalesOrderLineBomRequest.SetSalesOrderLineBomLineRequest();
-        l.setComponentProductId(componentProductId);
+        l.setComponentMaterialId(componentMaterialId);
         l.setQty(qty);
         l.setBomCode(bomCode);
         l.setDescription1(description1);

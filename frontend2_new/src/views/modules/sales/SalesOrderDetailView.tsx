@@ -62,6 +62,9 @@ export default function SalesOrderDetailView() {
 
   const [bomProductsLoading, setBomProductsLoading] = useState(false)
   const [bomAllProducts, setBomAllProducts] = useState<any[]>([])
+
+  const [bomMaterialsLoading, setBomMaterialsLoading] = useState(false)
+  const [bomAllMaterials, setBomAllMaterials] = useState<any[]>([])
   const [bomCurrenciesLoading, setBomCurrenciesLoading] = useState(false)
   const [bomCurrencies, setBomCurrencies] = useState<any[]>([])
 
@@ -140,6 +143,12 @@ export default function SalesOrderDetailView() {
     }
   }
 
+  const normalizeOrderDate = (v: any) => {
+    if (!v) return null
+    if (typeof v === 'string') return v
+    return toLocalDateString(v)
+  }
+
   const load = async (cid: number, soId: number) => {
     setLoading(true)
     try {
@@ -153,6 +162,8 @@ export default function SalesOrderDetailView() {
     }
 
   }
+
+  const soIdNum = useMemo(() => Number(id), [id])
 
   useEffect(() => {
     if (!companyId) return
@@ -169,6 +180,22 @@ export default function SalesOrderDetailView() {
       }
     })()
   }, [bomAllProducts.length, companyId])
+
+  useEffect(() => {
+    if (!companyId) return
+    if (bomAllMaterials.length) return
+    void (async () => {
+      setBomMaterialsLoading(true)
+      try {
+        const mats = await masterDataApi.listMaterials(companyId)
+        setBomAllMaterials((mats || []) as any[])
+      } catch (e: any) {
+        message.error(getApiErrorMessage(e, 'Failed to load materials'))
+      } finally {
+        setBomMaterialsLoading(false)
+      }
+    })()
+  }, [bomAllMaterials.length, companyId])
 
   const loadTaxRates = async (cid: number) => {
     setTaxRateOptionsLoading(true)
@@ -190,18 +217,22 @@ export default function SalesOrderDetailView() {
 
   const loadBomEditorLookups = async (cid: number) => {
     setBomProductsLoading(true)
+    setBomMaterialsLoading(true)
     setBomCurrenciesLoading(true)
     try {
-      const [prods, curs] = await Promise.all([
+      const [prods, mats, curs] = await Promise.all([
         masterDataApi.listProducts(cid),
+        masterDataApi.listMaterials(cid),
         masterDataApi.listCurrencies(cid)
       ])
       setBomAllProducts((prods || []) as any[])
+      setBomAllMaterials((mats || []) as any[])
       setBomCurrencies((curs || []) as any[])
     } catch (e: any) {
       message.error(getApiErrorMessage(e, 'Failed to load BOM editor lookups'))
     } finally {
       setBomProductsLoading(false)
+      setBomMaterialsLoading(false)
       setBomCurrenciesLoading(false)
     }
   }
@@ -223,7 +254,7 @@ export default function SalesOrderDetailView() {
     const existing = (bomSnapshotForSelectedProduct?.lines || []) as any[]
     setBomEditRows(
       (existing || []).map((r: any) => ({
-        componentProductId: r.componentProductId ?? null,
+        componentMaterialId: r.componentMaterialId ?? null,
         qty: r.qty ?? null,
         bomCode: r.bomCode ?? null,
         description1: r.description1 ?? null,
@@ -248,7 +279,7 @@ export default function SalesOrderDetailView() {
 
     const validRows = (bomEditRows || [])
       .map((r: any) => ({
-        componentProductId: r.componentProductId != null ? Number(r.componentProductId) : null,
+        componentMaterialId: r.componentMaterialId != null ? Number(r.componentMaterialId) : null,
         qty: r.qty != null ? Number(r.qty) : null,
         bomCode: r.bomCode || null,
         description1: r.description1 || null,
@@ -262,7 +293,7 @@ export default function SalesOrderDetailView() {
         amountDomestic: r.amountDomestic != null ? Number(r.amountDomestic) : null,
         currencyId: r.currencyId != null ? Number(r.currencyId) : null
       }))
-      .filter((r: any) => r.componentProductId != null && r.qty != null && r.qty > 0)
+      .filter((r: any) => r.componentMaterialId != null && r.qty != null && r.qty > 0)
 
     if (!validRows.length) {
       message.error('Please add at least 1 row with Component and Qty > 0')
@@ -445,7 +476,7 @@ export default function SalesOrderDetailView() {
     setBomInlineRows(
       (existing || []).map((r: any, idx: number) => ({
         ...r,
-        _key: String(r?.id || `${r?.componentProductId || 'cmp'}-${idx}`)
+        _key: String(r?.id || `${r?.componentMaterialId || 'cmp'}-${idx}`)
       }))
     )
   }, [bomProductId, bomSnapshotForSelectedProduct])
@@ -497,7 +528,7 @@ export default function SalesOrderDetailView() {
       ...prev,
       {
         _key: `tmp-${Date.now()}`,
-        componentProductId: null,
+        componentMaterialId: null,
         qty: 1,
         bomCode: null,
         description1: null,
@@ -532,7 +563,7 @@ export default function SalesOrderDetailView() {
 
     const validRows = (bomInlineRows || [])
       .map((r: any) => ({
-        componentProductId: r.componentProductId != null ? Number(r.componentProductId) : null,
+        componentMaterialId: r.componentMaterialId != null ? Number(r.componentMaterialId) : null,
         qty: r.qty != null ? Number(r.qty) : null,
         bomCode: r.bomCode || null,
         description1: r.description1 || null,
@@ -546,7 +577,7 @@ export default function SalesOrderDetailView() {
         amountDomestic: r.amountDomestic != null ? Number(r.amountDomestic) : null,
         currencyId: r.currencyId != null ? Number(r.currencyId) : null
       }))
-      .filter((r: any) => r.componentProductId != null && r.qty != null && r.qty > 0)
+      .filter((r: any) => r.componentMaterialId != null && r.qty != null && r.qty > 0)
 
     if (!validRows.length) {
       message.error('Please add at least 1 row with Component and Qty > 0')
@@ -604,6 +635,17 @@ export default function SalesOrderDetailView() {
 
   const canVoid = !['VOIDED', 'COMPLETED', 'PARTIALLY_COMPLETED'].includes(String(so?.status || '')) && !hasShippedQty
 
+  const productSelectOptions = useMemo(() => {
+    return ((bomAllProducts || []) as any[])
+      .filter((p: any) => {
+        // safety: if legacy API still returns itemType, exclude materials from SO lines
+        const it = String(p?.itemType ?? '').trim().toUpperCase().replace(/\s+/g, '_')
+        return it !== 'MARCHANDISES'
+      })
+      .map((p: any) => ({ value: Number(p.id), label: `${p.code || p.id} - ${p.name || ''}`.trim() }))
+      .filter((o: any) => o.value)
+  }, [bomAllProducts])
+
   const productLabelById = useMemo(() => {
     const m = new Map<number, string>()
     for (const p of (bomAllProducts || []) as any[]) {
@@ -614,26 +656,10 @@ export default function SalesOrderDetailView() {
     return m
   }, [bomAllProducts])
 
-  const productSelectOptions = useMemo(() => {
-    const norm = (v: any) => String(v || '').trim().toUpperCase().replace(/\s+/g, '_')
-    return ((bomAllProducts || []) as any[])
-      .filter((p: any) => norm((p as any)?.itemType) !== 'MARCHANDISES')
-      .map((p: any) => ({
-        value: Number(p.id),
-        label: `${p.code || p.id} - ${p.name || ''}`.trim()
-      }))
-  }, [bomAllProducts])
-
   const materialSelectOptions = useMemo(() => {
-    const norm = (v: any) => String(v || '').trim().toUpperCase().replace(/\s+/g, '_')
-    return ((bomAllProducts || []) as any[])
-      .filter((p: any) => norm((p as any)?.itemType) === 'MARCHANDISES')
-      .map((p: any) => ({
-        value: Number(p.id),
-        label: String(p.name || p.code || p.id || '')
-      }))
-      .filter((o: any) => o.value)
-  }, [bomAllProducts])
+    return ((bomAllMaterials || []) as any[])
+      .map((m: any) => ({ value: Number(m.id), label: `${m.code || m.id} - ${m.name || ''}`.trim() }))
+  }, [bomAllMaterials])
 
   const patchLineRow = (rowKey: string, patch: any) => {
     setLineEditRows((prev) => prev.map((r: any) => (String(r?._key) === String(rowKey) ? { ...r, ...patch } : r)))
@@ -680,7 +706,7 @@ export default function SalesOrderDetailView() {
 
     const businessPartnerId = (so as any)?.businessPartnerId ?? (so as any)?.businessPartner?.id ?? null
     const priceListVersionId = (so as any)?.priceListVersionId ?? (so as any)?.priceListVersion?.id ?? null
-    const orderDate = (so as any)?.orderDate ?? null
+    const orderDate = normalizeOrderDate((so as any)?.orderDate ?? null)
     if (!businessPartnerId) {
       message.error('Customer is missing on Sales Order')
       return
@@ -943,7 +969,7 @@ export default function SalesOrderDetailView() {
 
     const businessPartnerId = (so as any)?.businessPartnerId ?? (so as any)?.businessPartner?.id ?? null
     const priceListVersionId = (so as any)?.priceListVersionId ?? (so as any)?.priceListVersion?.id ?? null
-    const orderDate = (so as any)?.orderDate ?? null
+    const orderDate = normalizeOrderDate((so as any)?.orderDate ?? null)
     if (!businessPartnerId) {
       message.error('Customer is missing on Sales Order')
       return
@@ -983,8 +1009,8 @@ export default function SalesOrderDetailView() {
         foreignAmount: (so as any)?.foreignAmount ?? null,
         lines: [...existingLines, values].map((l: any) => ({
           id: l.id ?? null,
-          productId: l.productId,
-          qty: l.qty,
+          productId: l.productId != null ? Number(l.productId) : null,
+          qty: l.qty != null ? Number(l.qty) : null,
           unitPrice: l.unitPrice ?? null,
           description: l.description || null,
           unit: l.unit || null,
@@ -1283,6 +1309,44 @@ export default function SalesOrderDetailView() {
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      {!companyId ? (
+        <Card>
+          <Space direction="vertical" style={{ width: '100%' }} size={8}>
+            <Typography.Text strong>Company belum dipilih</Typography.Text>
+            <Typography.Text type="secondary">
+              Buka daftar Sales Orders dulu untuk memilih Company, lalu kembali ke halaman ini.
+            </Typography.Text>
+            <Space wrap>
+              <Button onClick={() => navigate('/modules/sales/sales-orders')}>Back to Sales Orders</Button>
+              <Button
+                type="primary"
+                onClick={() => {
+                  // retry after company is selected
+                  navigate('/modules/sales/sales-orders')
+                }}
+              >
+                Select Company
+              </Button>
+            </Space>
+          </Space>
+        </Card>
+      ) : null}
+
+      {companyId && !loading && soIdNum && !so ? (
+        <Card>
+          <Space direction="vertical" style={{ width: '100%' }} size={8}>
+            <Typography.Text strong>Sales Order gagal dimuat</Typography.Text>
+            <Typography.Text type="secondary">
+              Cek tab Network untuk request GET sales order. Klik Retry untuk mencoba lagi.
+            </Typography.Text>
+            <Space wrap>
+              <Button onClick={() => navigate('/modules/sales/sales-orders')}>Back</Button>
+              <Button type="primary" onClick={() => void load(companyId, soIdNum)}>Retry</Button>
+            </Space>
+          </Space>
+        </Card>
+      ) : null}
+
       <Card loading={loading}>
         <PageHeader
           title={`Sales Order ${so?.documentNo || ''}`.trim()}
@@ -1570,18 +1634,18 @@ export default function SalesOrderDetailView() {
                                 },
                                 {
                                   title: 'Materials',
-                                  dataIndex: 'componentProductId',
+                                  dataIndex: 'componentMaterialId',
                                   width: 260,
                                   render: (_: any, r: any) => (
                                     <Select
                                       style={{ width: '100%' }}
-                                      value={r?.componentProductId ?? undefined}
+                                      value={r?.componentMaterialId ?? undefined}
                                       options={materialSelectOptions}
                                       showSearch
                                       optionFilterProp="label"
                                       placeholder="Select component"
                                       disabled={String(so?.status || '') !== 'DRAFTED'}
-                                      onChange={(v) => patchBomInlineRow(String(r?._key), { componentProductId: Number(v) })}
+                                      onChange={(v) => patchBomInlineRow(String(r?._key), { componentMaterialId: Number(v) })}
                                     />
                                   )
                                 },
@@ -1891,14 +1955,11 @@ export default function SalesOrderDetailView() {
                 showSearch
                 optionFilterProp="label"
                 placeholder="Selection"
-                options={(bomAllProducts || []).map((p: any) => ({
-                  value: p.id,
-                  label: `${p.code || p.id} - ${p.name || ''}`.trim()
-                }))}
+                options={productSelectOptions}
               />
             </Form.Item>
             <Form.Item label="Qty" name="qty" rules={[{ required: true }]}>
-              <InputNumber style={{ width: '100%' }} min={0.0001} placeholder="0" />
+              <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
             </Form.Item>
             <Form.Item label="Unit Price" name="unitPrice">
               <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
@@ -2052,7 +2113,7 @@ export default function SalesOrderDetailView() {
                 setBomEditRows((prev) => [
                   ...(prev || []),
                   {
-                    componentProductId: null,
+                    componentMaterialId: null,
                     qty: null,
                     bomCode: null,
                     description1: null,
@@ -2080,11 +2141,11 @@ export default function SalesOrderDetailView() {
             rowKey={(_: any, i) => String(i)}
             dataSource={bomEditRows}
             scroll={{ x: 1600 }}
-            loading={bomProductsLoading || bomCurrenciesLoading}
+            loading={bomProductsLoading || bomMaterialsLoading || bomCurrenciesLoading}
             columns={[
               {
                 title: 'Materials',
-                dataIndex: 'componentProductId',
+                dataIndex: 'componentMaterialId',
                 width: 260,
                 render: (_: any, r: any, idx: number) => (
                   <Select
@@ -2093,11 +2154,11 @@ export default function SalesOrderDetailView() {
                     placeholder="Select component"
                     style={{ width: '100%' }}
                     options={materialSelectOptions}
-                    value={r.componentProductId ?? undefined}
+                    value={r.componentMaterialId ?? undefined}
                     onChange={(v) => {
                       setBomEditRows((prev) => {
                         const arr = [...(prev || [])]
-                        arr[idx] = { ...arr[idx], componentProductId: v }
+                        arr[idx] = { ...arr[idx], componentMaterialId: v }
                         return arr
                       })
                     }}

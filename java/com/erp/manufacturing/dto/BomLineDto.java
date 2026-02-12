@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 public class BomLineDto {
 
     private Long id;
-    private Long componentProductId;
+    private Long componentMaterialId;
     private BigDecimal qty;
 
     public Long getId() {
@@ -16,12 +16,12 @@ public class BomLineDto {
         this.id = id;
     }
 
-    public Long getComponentProductId() {
-        return componentProductId;
+    public Long getComponentMaterialId() {
+        return componentMaterialId;
     }
 
-    public void setComponentProductId(Long componentProductId) {
-        this.componentProductId = componentProductId;
+    public void setComponentMaterialId(Long componentMaterialId) {
+        this.componentMaterialId = componentMaterialId;
     }
 
     public BigDecimal getQty() {

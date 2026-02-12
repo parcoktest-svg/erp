@@ -77,7 +77,7 @@ public class BomController {
     private BomLineDto toLineDto(BomLine line) {
         BomLineDto dto = new BomLineDto();
         dto.setId(line.getId());
-        dto.setComponentProductId(line.getComponentProduct() != null ? line.getComponentProduct().getId() : null);
+        dto.setComponentMaterialId(line.getComponentMaterial() != null ? line.getComponentMaterial().getId() : null);
         dto.setQty(line.getQty());
         return dto;
     }

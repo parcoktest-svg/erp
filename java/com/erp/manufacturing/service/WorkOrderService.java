@@ -234,17 +234,17 @@ public class WorkOrderService {
         if (wo.getSalesOrderLineBom() != null) {
             for (SalesOrderLineBomLine line : getSnapshotLinesOrThrow(companyId, wo.getSalesOrderLineBom())) {
                 BigDecimal required = line.getQty().multiply(wo.getQty());
-                BigDecimal onHand = inventoryService.getOnHandQty(wo.getFromLocator().getId(), line.getComponentProduct().getId());
+                BigDecimal onHand = inventoryService.getOnHandQty(wo.getFromLocator().getId(), line.getComponentMaterial().getId());
                 if (onHand.compareTo(required) < 0) {
-                    throw new IllegalArgumentException("Insufficient on-hand for component productId=" + line.getComponentProduct().getId());
+                    throw new IllegalArgumentException("Insufficient on-hand for component materialId=" + line.getComponentMaterial().getId());
                 }
             }
         } else {
             for (BomLine line : getMasterLinesOrThrow(companyId, wo.getBom())) {
                 BigDecimal required = line.getQty().multiply(wo.getQty());
-                BigDecimal onHand = inventoryService.getOnHandQty(wo.getFromLocator().getId(), line.getComponentProduct().getId());
+                BigDecimal onHand = inventoryService.getOnHandQty(wo.getFromLocator().getId(), line.getComponentMaterial().getId());
                 if (onHand.compareTo(required) < 0) {
-                    throw new IllegalArgumentException("Insufficient on-hand for component productId=" + line.getComponentProduct().getId());
+                    throw new IllegalArgumentException("Insufficient on-hand for component materialId=" + line.getComponentMaterial().getId());
                 }
             }
         }
@@ -259,7 +259,7 @@ public class WorkOrderService {
         if (wo.getSalesOrderLineBom() != null) {
             for (SalesOrderLineBomLine line : getSnapshotLinesOrThrow(companyId, wo.getSalesOrderLineBom())) {
                 CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
-                l.setProductId(line.getComponentProduct().getId());
+                l.setProductId(line.getComponentMaterial().getId());
                 l.setQty(line.getQty().multiply(wo.getQty()));
                 l.setFromLocatorId(wo.getFromLocator().getId());
                 l.setToLocatorId(null);
@@ -268,7 +268,7 @@ public class WorkOrderService {
         } else {
             for (BomLine line : getMasterLinesOrThrow(companyId, wo.getBom())) {
                 CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
-                l.setProductId(line.getComponentProduct().getId());
+                l.setProductId(line.getComponentMaterial().getId());
                 l.setQty(line.getQty().multiply(wo.getQty()));
                 l.setFromLocatorId(wo.getFromLocator().getId());
                 l.setToLocatorId(null);
@@ -301,51 +301,51 @@ public class WorkOrderService {
         return workOrderRepository.save(wo);
     }
 
-	@Transactional
-	public WorkOrder voidWorkOrder(Long companyId, Long workOrderId, VoidWorkOrderRequest request) {
-		WorkOrder wo = get(companyId, workOrderId);
+    @Transactional
+    public WorkOrder voidWorkOrder(Long companyId, Long workOrderId, VoidWorkOrderRequest request) {
+        WorkOrder wo = get(companyId, workOrderId);
 
-		if (wo.getStatus() == DocumentStatus.VOIDED) {
-			return wo;
-		}
+        if (wo.getStatus() == DocumentStatus.VOIDED) {
+            return wo;
+        }
 
-		// If already completed, create reversal movements to restore stock
-		if (wo.getStatus() == DocumentStatus.COMPLETED) {
-			// Reverse issue (OUT) by doing IN to fromLocator
-			CreateInventoryMovementRequest issueRevReq = new CreateInventoryMovementRequest();
-			issueRevReq.setMovementType(InventoryMovementType.IN);
-			issueRevReq.setMovementDate(request.getVoidDate());
-			issueRevReq.setDescription("WO " + wo.getDocumentNo() + " reversal issue");
+        // If already completed, create reversal movements to restore stock
+        if (wo.getStatus() == DocumentStatus.COMPLETED) {
+            // Reverse issue (OUT) by doing IN to fromLocator
+            CreateInventoryMovementRequest issueRevReq = new CreateInventoryMovementRequest();
+            issueRevReq.setMovementType(InventoryMovementType.IN);
+            issueRevReq.setMovementDate(request.getVoidDate());
+            issueRevReq.setDescription("WO " + wo.getDocumentNo() + " reversal issue");
 
-			List<CreateInventoryMovementRequest.CreateInventoryMovementLineRequest> issueRevLines = new ArrayList<>();
-			if (wo.getSalesOrderLineBom() != null) {
-				for (SalesOrderLineBomLine line : getSnapshotLinesOrThrow(companyId, wo.getSalesOrderLineBom())) {
-					CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
-					l.setProductId(line.getComponentProduct().getId());
-					l.setQty(line.getQty().multiply(wo.getQty()));
-					l.setToLocatorId(wo.getFromLocator().getId());
-					l.setFromLocatorId(null);
-					issueRevLines.add(l);
-				}
-			} else {
-				for (BomLine line : getMasterLinesOrThrow(companyId, wo.getBom())) {
-					CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
-					l.setProductId(line.getComponentProduct().getId());
-					l.setQty(line.getQty().multiply(wo.getQty()));
-					l.setToLocatorId(wo.getFromLocator().getId());
-					l.setFromLocatorId(null);
-					issueRevLines.add(l);
-				}
-			}
-			issueRevReq.setLines(issueRevLines);
-			InventoryMovement issueRevMovement = inventoryService.createMovement(companyId, issueRevReq);
-			wo.setIssueReversalMovementDocNo(issueRevMovement.getDocumentNo());
+            List<CreateInventoryMovementRequest.CreateInventoryMovementLineRequest> issueRevLines = new ArrayList<>();
+            if (wo.getSalesOrderLineBom() != null) {
+                for (SalesOrderLineBomLine line : getSnapshotLinesOrThrow(companyId, wo.getSalesOrderLineBom())) {
+                    CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
+                    l.setProductId(line.getComponentMaterial().getId());
+                    l.setQty(line.getQty().multiply(wo.getQty()));
+                    l.setToLocatorId(wo.getFromLocator().getId());
+                    l.setFromLocatorId(null);
+                    issueRevLines.add(l);
+                }
+            } else {
+                for (BomLine line : getMasterLinesOrThrow(companyId, wo.getBom())) {
+                    CreateInventoryMovementRequest.CreateInventoryMovementLineRequest l = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
+                    l.setProductId(line.getComponentMaterial().getId());
+                    l.setQty(line.getQty().multiply(wo.getQty()));
+                    l.setToLocatorId(wo.getFromLocator().getId());
+                    l.setFromLocatorId(null);
+                    issueRevLines.add(l);
+                }
+            }
+            issueRevReq.setLines(issueRevLines);
+            InventoryMovement issueRevMovement = inventoryService.createMovement(companyId, issueRevReq);
+            wo.setIssueReversalMovementDocNo(issueRevMovement.getDocumentNo());
 
-			// Reverse receipt (IN) by doing OUT from toLocator
-			CreateInventoryMovementRequest receiptRevReq = new CreateInventoryMovementRequest();
-			receiptRevReq.setMovementType(InventoryMovementType.OUT);
-			receiptRevReq.setMovementDate(request.getVoidDate());
-			receiptRevReq.setDescription("WO " + wo.getDocumentNo() + " reversal receipt");
+            // Reverse receipt (IN) by doing OUT from toLocator
+            CreateInventoryMovementRequest receiptRevReq = new CreateInventoryMovementRequest();
+            receiptRevReq.setMovementType(InventoryMovementType.OUT);
+            receiptRevReq.setMovementDate(request.getVoidDate());
+            receiptRevReq.setDescription("WO " + wo.getDocumentNo() + " reversal receipt");
 
 			CreateInventoryMovementRequest.CreateInventoryMovementLineRequest receiptRevLine = new CreateInventoryMovementRequest.CreateInventoryMovementLineRequest();
 			receiptRevLine.setProductId(wo.getProduct().getId());

@@ -16,7 +16,9 @@ import com.erp.manufacturing.repository.BomRepository;
 import com.erp.manufacturing.repository.WorkOrderRepository;
 import com.erp.manufacturing.request.CreateBomRequest;
 import com.erp.manufacturing.request.UpdateBomRequest;
+import com.erp.masterdata.entity.Material;
 import com.erp.masterdata.entity.Product;
+import com.erp.masterdata.repository.MaterialRepository;
 import com.erp.masterdata.repository.ProductRepository;
 
 @Service
@@ -26,6 +28,7 @@ public class BomService {
     private final CompanyRepository companyRepository;
     private final OrgRepository orgRepository;
     private final ProductRepository productRepository;
+    private final MaterialRepository materialRepository;
     private final WorkOrderRepository workOrderRepository;
 
     public BomService(
@@ -33,11 +36,13 @@ public class BomService {
             CompanyRepository companyRepository,
             OrgRepository orgRepository,
             ProductRepository productRepository,
+            MaterialRepository materialRepository,
             WorkOrderRepository workOrderRepository) {
         this.bomRepository = bomRepository;
         this.companyRepository = companyRepository;
         this.orgRepository = orgRepository;
         this.productRepository = productRepository;
+        this.materialRepository = materialRepository;
         this.workOrderRepository = workOrderRepository;
     }
 
@@ -91,17 +96,17 @@ public class BomService {
 
         List<BomLine> lines = new ArrayList<>();
         for (CreateBomRequest.CreateBomLineRequest lineReq : request.getLines()) {
-            Product component = productRepository.findById(lineReq.getComponentProductId())
-                    .orElseThrow(() -> new IllegalArgumentException("Component product not found"));
+            Material component = materialRepository.findById(lineReq.getComponentMaterialId())
+                    .orElseThrow(() -> new IllegalArgumentException("Component material not found"));
 
             if (component.getCompany() == null || component.getCompany().getId() == null
                     || !component.getCompany().getId().equals(companyId)) {
-                throw new IllegalArgumentException("Component product company mismatch");
+                throw new IllegalArgumentException("Component material company mismatch");
             }
 
             BomLine line = new BomLine();
             line.setBom(bom);
-            line.setComponentProduct(component);
+            line.setComponentMaterial(component);
             line.setQty(lineReq.getQty());
             lines.add(line);
         }
@@ -149,17 +154,17 @@ public class BomService {
 
         existing.getLines().clear();
         for (UpdateBomRequest.UpdateBomLineRequest lineReq : request.getLines()) {
-            Product component = productRepository.findById(lineReq.getComponentProductId())
-                    .orElseThrow(() -> new IllegalArgumentException("Component product not found"));
+            Material component = materialRepository.findById(lineReq.getComponentMaterialId())
+                    .orElseThrow(() -> new IllegalArgumentException("Component material not found"));
 
             if (component.getCompany() == null || component.getCompany().getId() == null
                     || !component.getCompany().getId().equals(companyId)) {
-                throw new IllegalArgumentException("Component product company mismatch");
+                throw new IllegalArgumentException("Component material company mismatch");
             }
 
             BomLine line = new BomLine();
             line.setBom(existing);
-            line.setComponentProduct(component);
+            line.setComponentMaterial(component);
             line.setQty(lineReq.getQty());
             existing.getLines().add(line);
         }

@@ -72,6 +72,13 @@ export const masterDataApi = {
   deleteProduct: (companyId: any, productId: any) =>
     http.delete(`/api/masterdata/companies/${companyId}/products/${productId}`).then((r) => r.data),
 
+  listMaterials: (companyId: any, params?: any) => http.get(`/api/masterdata/companies/${companyId}/materials`, { params }).then((r) => r.data),
+  createMaterial: (companyId: any, payload: any) => http.post(`/api/masterdata/companies/${companyId}/materials`, payload).then((r) => r.data),
+  updateMaterial: (companyId: any, materialId: any, payload: any) =>
+    http.put(`/api/masterdata/companies/${companyId}/materials/${materialId}`, payload).then((r) => r.data),
+  deleteMaterial: (companyId: any, materialId: any) =>
+    http.delete(`/api/masterdata/companies/${companyId}/materials/${materialId}`).then((r) => r.data),
+
   listWarehouses: (companyId: any) => http.get(`/api/masterdata/companies/${companyId}/warehouses`).then((r) => r.data),
   createWarehouse: (companyId: any, payload: any) => http.post(`/api/masterdata/companies/${companyId}/warehouses`, payload).then((r) => r.data),
   updateWarehouse: (companyId: any, warehouseId: any, payload: any) =>

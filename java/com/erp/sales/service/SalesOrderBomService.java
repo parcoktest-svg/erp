@@ -10,8 +10,8 @@ import com.erp.core.model.DocumentStatus;
 import com.erp.manufacturing.entity.Bom;
 import com.erp.manufacturing.entity.BomLine;
 import com.erp.manufacturing.repository.BomRepository;
-import com.erp.masterdata.entity.Product;
-import com.erp.masterdata.repository.ProductRepository;
+import com.erp.masterdata.entity.Material;
+import com.erp.masterdata.repository.MaterialRepository;
 import com.erp.sales.entity.SalesOrder;
 import com.erp.sales.entity.SalesOrderLine;
 import com.erp.sales.entity.SalesOrderLineBom;
@@ -26,17 +26,17 @@ public class SalesOrderBomService {
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderLineBomRepository salesOrderLineBomRepository;
     private final BomRepository bomRepository;
-    private final ProductRepository productRepository;
+    private final MaterialRepository materialRepository;
 
     public SalesOrderBomService(
             SalesOrderRepository salesOrderRepository,
             SalesOrderLineBomRepository salesOrderLineBomRepository,
             BomRepository bomRepository,
-            ProductRepository productRepository) {
+            MaterialRepository materialRepository) {
         this.salesOrderRepository = salesOrderRepository;
         this.salesOrderLineBomRepository = salesOrderLineBomRepository;
         this.bomRepository = bomRepository;
-        this.productRepository = productRepository;
+        this.materialRepository = materialRepository;
     }
 
     public List<SalesOrderLineBom> listBySalesOrder(Long companyId, Long salesOrderId) {
@@ -89,20 +89,20 @@ public class SalesOrderBomService {
 
             for (BomLine l : master.getLines()) {
                 SalesOrderLineBomLine snapLine = new SalesOrderLineBomLine();
-                snapLine.setComponentProduct(l.getComponentProduct());
+                snapLine.setComponentMaterial(l.getComponentMaterial());
                 snapLine.setQty(l.getQty());
                 templateLines.add(snapLine);
             }
         } else if (request.getLines() != null) {
             for (SetSalesOrderLineBomRequest.SetSalesOrderLineBomLineRequest lineReq : request.getLines()) {
-                Product component = productRepository.findById(lineReq.getComponentProductId())
-                        .orElseThrow(() -> new IllegalArgumentException("Component product not found"));
+                Material component = materialRepository.findById(lineReq.getComponentMaterialId())
+                        .orElseThrow(() -> new IllegalArgumentException("Component material not found"));
                 if (component.getCompany() == null || component.getCompany().getId() == null
                         || !component.getCompany().getId().equals(companyId)) {
-                    throw new IllegalArgumentException("Component product company mismatch");
+                    throw new IllegalArgumentException("Component material company mismatch");
                 }
                 SalesOrderLineBomLine snapLine = new SalesOrderLineBomLine();
-                snapLine.setComponentProduct(component);
+                snapLine.setComponentMaterial(component);
                 snapLine.setQty(lineReq.getQty());
                 snapLine.setBomCode(lineReq.getBomCode());
                 snapLine.setDescription1(lineReq.getDescription1());
@@ -134,7 +134,7 @@ public class SalesOrderBomService {
             for (SalesOrderLineBomLine t : templateLines) {
                 SalesOrderLineBomLine newLine = new SalesOrderLineBomLine();
                 newLine.setSalesOrderLineBom(bomSnap);
-                newLine.setComponentProduct(t.getComponentProduct());
+                newLine.setComponentMaterial(t.getComponentMaterial());
                 newLine.setQty(t.getQty());
                 newLine.setBomCode(t.getBomCode());
                 newLine.setDescription1(t.getDescription1());
@@ -230,7 +230,7 @@ public class SalesOrderBomService {
                 for (SalesOrderLineBomLine srcLine : src.getLines()) {
                     SalesOrderLineBomLine l = new SalesOrderLineBomLine();
                     l.setSalesOrderLineBom(tgt);
-                    l.setComponentProduct(srcLine.getComponentProduct());
+                    l.setComponentMaterial(srcLine.getComponentMaterial());
                     l.setQty(srcLine.getQty());
                     l.setBomCode(srcLine.getBomCode());
                     l.setDescription1(srcLine.getDescription1());

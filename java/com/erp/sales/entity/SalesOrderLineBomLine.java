@@ -3,7 +3,7 @@ package com.erp.sales.entity;
 import java.math.BigDecimal;
 
 import com.erp.core.model.BaseEntity;
-import com.erp.masterdata.entity.Product;
+import com.erp.masterdata.entity.Material;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,8 +21,8 @@ public class SalesOrderLineBomLine extends BaseEntity {
     private SalesOrderLineBom salesOrderLineBom;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "component_product_id", nullable = false)
-    private Product componentProduct;
+    @JoinColumn(name = "component_material_id", nullable = false)
+    private Material componentMaterial;
 
     @Column(nullable = false)
     private BigDecimal qty;
@@ -68,12 +68,12 @@ public class SalesOrderLineBomLine extends BaseEntity {
         this.salesOrderLineBom = salesOrderLineBom;
     }
 
-    public Product getComponentProduct() {
-        return componentProduct;
+    public Material getComponentMaterial() {
+        return componentMaterial;
     }
 
-    public void setComponentProduct(Product componentProduct) {
-        this.componentProduct = componentProduct;
+    public void setComponentMaterial(Material componentMaterial) {
+        this.componentMaterial = componentMaterial;
     }
 
     public BigDecimal getQty() {

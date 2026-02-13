@@ -16,13 +16,12 @@ type UomRow = {
   name?: string
 }
 
-type ProductRow = {
+type MaterialRow = {
   id: number
   code?: string
   name?: string
   uomId?: number
   active?: boolean
-  itemType?: string
 }
 
 export default function MaterialsView() {
@@ -36,12 +35,12 @@ export default function MaterialsView() {
   const [uoms, setUoms] = useState<UomRow[]>([])
 
   const [loading, setLoading] = useState(false)
-  const [rows, setRows] = useState<ProductRow[]>([])
+  const [rows, setRows] = useState<MaterialRow[]>([])
 
   const [q, setQ] = useState('')
 
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<ProductRow | null>(null)
+  const [editing, setEditing] = useState<MaterialRow | null>(null)
   const [form] = Form.useForm()
 
   const loadCompanies = async () => {
@@ -74,8 +73,8 @@ export default function MaterialsView() {
   const load = async (cid: number) => {
     setLoading(true)
     try {
-      const res = await masterDataApi.listProducts(cid)
-      setRows((res || []) as ProductRow[])
+      const res = await masterDataApi.listMaterials(cid)
+      setRows((res || []) as MaterialRow[])
     } catch (e: any) {
       message.error(e?.message || 'Failed to load materials')
     } finally {
@@ -102,12 +101,11 @@ export default function MaterialsView() {
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase()
-    const base = (rows || []).filter((r) => String((r as any)?.itemType || '').toUpperCase() === 'MARCHANDISES')
-    if (!qq) return base
-    return base.filter((r) => `${r.code || ''} ${r.name || ''}`.toLowerCase().includes(qq))
+    if (!qq) return rows || []
+    return (rows || []).filter((r) => `${r.code || ''} ${r.name || ''}`.toLowerCase().includes(qq))
   }, [q, rows])
 
-  const columns: ColumnsType<ProductRow> = useMemo(
+  const columns: ColumnsType<MaterialRow> = useMemo(
     () => [
       { title: 'ID', dataIndex: 'id', width: 90 },
       { title: 'Code', dataIndex: 'code', width: 160 },
@@ -147,7 +145,7 @@ export default function MaterialsView() {
               onConfirm={async () => {
                 if (!companyId) return
                 try {
-                  await masterDataApi.deleteProduct(companyId, r.id)
+                  await masterDataApi.deleteMaterial(companyId, r.id)
                   message.success('Deleted')
                   await load(companyId)
                 } catch (e: any) {
@@ -219,7 +217,7 @@ export default function MaterialsView() {
             </div>
           </Space>
 
-          <Table<ProductRow> rowKey="id" loading={loading} columns={columns} dataSource={filtered} pagination={{ pageSize: 10 }} />
+          <Table<MaterialRow> rowKey="id" loading={loading} columns={columns} dataSource={filtered} pagination={{ pageSize: 10 }} />
         </Space>
       </Card>
 
@@ -235,12 +233,12 @@ export default function MaterialsView() {
           if (!companyId) return
           try {
             const values = await form.validateFields()
-            const payload = { ...values, itemType: 'MARCHANDISES' }
+            const payload = { ...values }
             if (editing) {
-              await masterDataApi.updateProduct(companyId, editing.id, payload)
+              await masterDataApi.updateMaterial(companyId, editing.id, payload)
               message.success('Updated')
             } else {
-              await masterDataApi.createProduct(companyId, payload)
+              await masterDataApi.createMaterial(companyId, payload)
               message.success('Created')
             }
             setOpen(false)

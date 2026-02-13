@@ -1,6 +1,6 @@
 import { Button, Card, DatePicker, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tabs, Typography, Upload, message } from 'antd'
 import dayjs from 'dayjs'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import PageHeader from '@/components/PageHeader'
 import StatusBadge from '@/components/StatusBadge'
@@ -40,6 +40,7 @@ export default function SalesOrderDetailView() {
   const navigate = useNavigate()
   const { id } = useParams()
   const companyId = useContextStore((s) => s.companyId)
+  const prevCompanyIdRef = useRef<any>(companyId)
 
   const [activeTab, setActiveTab] = useState('lines')
 
@@ -405,10 +406,13 @@ export default function SalesOrderDetailView() {
 
   useEffect(() => {
     // Reset BOM lookups when company changes
-    setBomAllProducts([])
-    setBomAllMaterials([])
-    setBomCurrencies([])
-    setBomProductId(null)
+    if (prevCompanyIdRef.current !== companyId) {
+      prevCompanyIdRef.current = companyId
+      setBomAllProducts([])
+      setBomAllMaterials([])
+      setBomCurrencies([])
+      setBomProductId(null)
+    }
   }, [companyId])
 
   useEffect(() => {

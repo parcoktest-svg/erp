@@ -1,4 +1,4 @@
-import { Button, Card, DatePicker, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tabs, Typography, Upload, message } from 'antd'
+import { Button, Card, DatePicker, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tabs, Tooltip, Typography, Upload, message } from 'antd'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -278,42 +278,50 @@ export default function SalesOrderDetailView() {
     if (!companyId || !so?.id) return
     if (!bomSelectedLineMeta?.id) return
 
-    const validRows = (bomEditRows || [])
-      .map((r: any) => ({
-        componentMaterialId: r.componentMaterialId != null ? Number(r.componentMaterialId) : null,
-        qty: r.qty != null ? Number(r.qty) : null,
-        bomCode: r.bomCode || null,
-        description1: r.description1 || null,
-        colorDescription2: r.colorDescription2 || null,
-        unit: r.unit || null,
-        unitPriceForeign: r.unitPriceForeign != null ? Number(r.unitPriceForeign) : null,
-        unitPriceDomestic: r.unitPriceDomestic != null ? Number(r.unitPriceDomestic) : null,
-        yy: r.yy != null ? Number(r.yy) : null,
-        exchangeRate: r.exchangeRate != null ? Number(r.exchangeRate) : null,
-        amountForeign: r.amountForeign != null ? Number(r.amountForeign) : null,
-        amountDomestic: r.amountDomestic != null ? Number(r.amountDomestic) : null,
-        currencyId: r.currencyId != null ? Number(r.currencyId) : null
-      }))
-      .filter((r: any) => r.componentMaterialId != null && r.qty != null && r.qty > 0)
+    const { validRows, invalid } = validateBomRows(bomEditRows || [])
 
-    if (!validRows.length) {
-      message.error('Please add at least 1 row with Component and Qty > 0')
+    if (invalid.length) {
+      const detail = invalid
+        .slice(0, 5)
+        .map((x) => `Row ${x.idx + 1}: ${x.missing.join(', ')}`)
+        .join(' | ')
+      const more = invalid.length > 5 ? ` (+${invalid.length - 5} more)` : ''
+      message.warning(`BOM belum lengkap. ${detail}${more}`)
+      return
+    }
+
+    const filteredValid = (validRows || []).filter((r: any) => r.componentMaterialId != null && r.qty != null && r.qty > 0)
+    if (!filteredValid.length) {
+      message.error('Please add at least 1 row with Material and Qty > 0')
       return
     }
 
     setBomEditSaving(true)
     try {
+      const targetLineId = Number(bomSelectedLineMeta.id)
       await salesApi.setSalesOrderLineBom(companyId, so.id, {
         salesOrderLineId: Number(bomSelectedLineMeta.id),
         sourceBomId: null,
         sourceBomVersion: null,
-        lines: validRows
+        lines: filteredValid
       })
-      message.success('BOM saved')
       await loadBoms(companyId, so.id)
+
+      // verify snapshot exists for target line
+      const snap = bomByLineId.get(targetLineId)
+      const snapLines = (snap?.lines || []) as any[]
+      if (!snap || snapLines.length === 0) {
+        Modal.warning({
+          title: 'BOM belum tersimpan',
+          content: 'BOM berhasil dikirim, tapi snapshot tidak ditemukan setelah reload. Cek backend log / Network response.'
+        })
+      } else {
+        message.success(`BOM saved (${snapLines.length} lines)`) 
+      }
       setBomEditOpen(false)
     } catch (e: any) {
-      message.error(getApiErrorMessage(e, 'Failed to save BOM'))
+      const msg = getApiErrorMessage(e, 'Failed to save BOM')
+      Modal.error({ title: 'Failed to save BOM', content: msg })
     } finally {
       setBomEditSaving(false)
     }
@@ -562,21 +570,20 @@ export default function SalesOrderDetailView() {
     setBomInlineRows((prev) => prev.filter((r: any) => String(r?._key) !== String(rowKey)))
   }
 
-  const saveBomInline = async () => {
-    if (!companyId || !so?.id) return
-    if (!bomSelectedLineMeta?.id) {
-      message.error('Finished goods line is missing')
-      return
-    }
-    if (String(so?.status || '') !== 'DRAFTED') {
-      message.error('Only allowed while Sales Order is DRAFTED')
-      return
-    }
+  const validateBomRows = (rows: any[]) => {
+    const invalid: Array<{ idx: number; missing: string[] }> = []
+    const validRows = (rows || []).map((r: any, idx: number) => {
+      const componentMaterialId = r.componentMaterialId != null ? Number(r.componentMaterialId) : null
+      const qty = r.qty != null ? Number(r.qty) : null
 
-    const validRows = (bomInlineRows || [])
-      .map((r: any) => ({
-        componentMaterialId: r.componentMaterialId != null ? Number(r.componentMaterialId) : null,
-        qty: r.qty != null ? Number(r.qty) : null,
+      const missing: string[] = []
+      if (!componentMaterialId) missing.push('Material')
+      if (qty == null || Number.isNaN(qty) || qty <= 0) missing.push('Qty')
+      if (missing.length) invalid.push({ idx, missing })
+
+      return {
+        componentMaterialId,
+        qty,
         bomCode: r.bomCode || null,
         description1: r.description1 || null,
         colorDescription2: r.colorDescription2 || null,
@@ -588,26 +595,65 @@ export default function SalesOrderDetailView() {
         amountForeign: r.amountForeign != null ? Number(r.amountForeign) : null,
         amountDomestic: r.amountDomestic != null ? Number(r.amountDomestic) : null,
         currencyId: r.currencyId != null ? Number(r.currencyId) : null
-      }))
-      .filter((r: any) => r.componentMaterialId != null && r.qty != null && r.qty > 0)
+      }
+    })
 
-    if (!validRows.length) {
-      message.error('Please add at least 1 row with Component and Qty > 0')
+    return { validRows, invalid }
+  }
+
+  const saveBomInline = async () => {
+    if (!companyId || !so?.id) return
+    if (!bomSelectedLineMeta?.id) {
+      message.error('Finished goods line is missing')
+      return
+    }
+    if (String(so?.status || '') !== 'DRAFTED') {
+      message.error('Only allowed while Sales Order is DRAFTED')
+      return
+    }
+
+    const { validRows, invalid } = validateBomRows(bomInlineRows || [])
+
+    if (invalid.length) {
+      const detail = invalid
+        .slice(0, 5)
+        .map((x) => `Row ${x.idx + 1}: ${x.missing.join(', ')}`)
+        .join(' | ')
+      const more = invalid.length > 5 ? ` (+${invalid.length - 5} more)` : ''
+      message.warning(`BOM belum lengkap. ${detail}${more}`)
+      return
+    }
+
+    const filteredValid = (validRows || []).filter((r: any) => r.componentMaterialId != null && r.qty != null && r.qty > 0)
+    if (!filteredValid.length) {
+      message.error('Please add at least 1 row with Material and Qty > 0')
       return
     }
 
     setBomInlineSaving(true)
     try {
+      const targetLineId = Number(bomSelectedLineMeta.id)
       await salesApi.setSalesOrderLineBom(companyId, so.id, {
-        salesOrderLineId: Number(bomSelectedLineMeta.id),
+        salesOrderLineId: targetLineId,
         sourceBomId: null,
         sourceBomVersion: null,
-        lines: validRows
+        lines: filteredValid
       })
-      message.success('BOM saved')
       await loadBoms(companyId, so.id)
+
+      const snap = bomByLineId.get(targetLineId)
+      const snapLines = (snap?.lines || []) as any[]
+      if (!snap || snapLines.length === 0) {
+        Modal.warning({
+          title: 'BOM belum tersimpan',
+          content: 'BOM berhasil dikirim, tapi snapshot tidak ditemukan setelah reload. Cek backend log / Network response.'
+        })
+      } else {
+        message.success(`BOM saved (${snapLines.length} lines)`) 
+      }
     } catch (e: any) {
-      message.error(getApiErrorMessage(e, 'Failed to save BOM'))
+      const msg = getApiErrorMessage(e, 'Failed to save BOM')
+      Modal.error({ title: 'Failed to save BOM', content: msg })
     } finally {
       setBomInlineSaving(false)
     }
@@ -1645,20 +1691,30 @@ export default function SalesOrderDetailView() {
                                   render: () => (bomProductId == null ? '-' : productLabelById.get(Number(bomProductId)) || `Product ${bomProductId}`)
                                 },
                                 {
-                                  title: 'Materials',
+                                  title: (
+                                    <span>
+                                      Materials <span style={{ color: '#ff4d4f' }}>*</span>
+                                    </span>
+                                  ),
                                   dataIndex: 'componentMaterialId',
                                   width: 260,
                                   render: (_: any, r: any) => (
-                                    <Select
-                                      style={{ width: '100%' }}
-                                      value={r?.componentMaterialId ?? undefined}
-                                      options={materialSelectOptions}
-                                      showSearch
-                                      optionFilterProp="label"
-                                      placeholder="Select component"
-                                      disabled={String(so?.status || '') !== 'DRAFTED'}
-                                      onChange={(v) => patchBomInlineRow(String(r?._key), { componentMaterialId: Number(v) })}
-                                    />
+                                    <Tooltip title={!r?.componentMaterialId ? 'Material is required' : undefined}>
+                                      <Select
+                                        style={{
+                                          width: '100%',
+                                          border: !r?.componentMaterialId ? '1px solid #ff4d4f' : undefined,
+                                          borderRadius: 6
+                                        }}
+                                        value={r?.componentMaterialId ?? undefined}
+                                        options={materialSelectOptions}
+                                        showSearch
+                                        optionFilterProp="label"
+                                        placeholder="Select component"
+                                        disabled={String(so?.status || '') !== 'DRAFTED'}
+                                        onChange={(v) => patchBomInlineRow(String(r?._key), { componentMaterialId: Number(v) })}
+                                      />
+                                    </Tooltip>
                                   )
                                 },
                                 {
@@ -1710,18 +1766,28 @@ export default function SalesOrderDetailView() {
                                   )
                                 },
                                 {
-                                  title: 'Qty',
+                                  title: (
+                                    <span>
+                                      Qty <span style={{ color: '#ff4d4f' }}>*</span>
+                                    </span>
+                                  ),
                                   dataIndex: 'qty',
                                   width: 140,
                                   align: 'right',
                                   render: (_: any, r: any) => (
-                                    <InputNumber
-                                      style={{ width: '100%' }}
-                                      min={0}
-                                      value={r?.qty ?? undefined}
-                                      disabled={String(so?.status || '') !== 'DRAFTED'}
-                                      onChange={(v) => patchBomInlineRow(String(r?._key), { qty: v == null ? null : Number(v) })}
-                                    />
+                                    <Tooltip title={r?.qty == null || Number(r?.qty) <= 0 ? 'Qty must be > 0' : undefined}>
+                                      <InputNumber
+                                        style={{
+                                          width: '100%',
+                                          border: r?.qty == null || Number(r?.qty) <= 0 ? '1px solid #ff4d4f' : undefined,
+                                          borderRadius: 6
+                                        }}
+                                        min={0}
+                                        value={r?.qty ?? undefined}
+                                        disabled={String(so?.status || '') !== 'DRAFTED'}
+                                        onChange={(v) => patchBomInlineRow(String(r?._key), { qty: v == null ? null : Number(v) })}
+                                      />
+                                    </Tooltip>
                                   )
                                 },
                                 {
@@ -2156,45 +2222,65 @@ export default function SalesOrderDetailView() {
             loading={bomProductsLoading || bomMaterialsLoading || bomCurrenciesLoading}
             columns={[
               {
-                title: 'Materials',
+                title: (
+                  <span>
+                    Materials <span style={{ color: '#ff4d4f' }}>*</span>
+                  </span>
+                ),
                 dataIndex: 'componentMaterialId',
                 width: 260,
                 render: (_: any, r: any, idx: number) => (
-                  <Select
-                    showSearch
-                    optionFilterProp="label"
-                    placeholder="Select component"
-                    style={{ width: '100%' }}
-                    options={materialSelectOptions}
-                    value={r.componentMaterialId ?? undefined}
-                    onChange={(v) => {
-                      setBomEditRows((prev) => {
-                        const arr = [...(prev || [])]
-                        arr[idx] = { ...arr[idx], componentMaterialId: v }
-                        return arr
-                      })
-                    }}
-                  />
+                  <Tooltip title={!r?.componentMaterialId ? 'Material is required' : undefined}>
+                    <Select
+                      showSearch
+                      optionFilterProp="label"
+                      placeholder="Select component"
+                      style={{
+                        width: '100%',
+                        border: !r?.componentMaterialId ? '1px solid #ff4d4f' : undefined,
+                        borderRadius: 6
+                      }}
+                      options={materialSelectOptions}
+                      value={r.componentMaterialId ?? undefined}
+                      onChange={(v) => {
+                        setBomEditRows((prev) => {
+                          const arr = [...(prev || [])]
+                          arr[idx] = { ...arr[idx], componentMaterialId: v }
+                          return arr
+                        })
+                      }}
+                    />
+                  </Tooltip>
                 )
               },
               {
-                title: 'Qty',
+                title: (
+                  <span>
+                    Qty <span style={{ color: '#ff4d4f' }}>*</span>
+                  </span>
+                ),
                 dataIndex: 'qty',
                 width: 90,
                 render: (_: any, r: any, idx: number) => (
-                  <InputNumber
-                    style={{ width: '100%' }}
-                    min={0}
-                    placeholder="0"
-                    value={r.qty ?? undefined}
-                    onChange={(v) => {
-                      setBomEditRows((prev) => {
-                        const arr = [...(prev || [])]
-                        arr[idx] = { ...arr[idx], qty: v }
-                        return arr
-                      })
-                    }}
-                  />
+                  <Tooltip title={r?.qty == null || Number(r?.qty) <= 0 ? 'Qty must be > 0' : undefined}>
+                    <InputNumber
+                      style={{
+                        width: '100%',
+                        border: r?.qty == null || Number(r?.qty) <= 0 ? '1px solid #ff4d4f' : undefined,
+                        borderRadius: 6
+                      }}
+                      min={0}
+                      placeholder="0"
+                      value={r.qty ?? undefined}
+                      onChange={(v) => {
+                        setBomEditRows((prev) => {
+                          const arr = [...(prev || [])]
+                          arr[idx] = { ...arr[idx], qty: v }
+                          return arr
+                        })
+                      }}
+                    />
+                  </Tooltip>
                 )
               },
               {

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 09, 2026 at 09:02 AM
+-- Generation Time: Feb 13, 2026 at 04:35 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -141,7 +141,7 @@ CREATE TABLE `core_document_sequence` (
 --
 
 INSERT INTO `core_document_sequence` (`id`, `created_at`, `created_by`, `updated_at`, `updated_by`, `document_type`, `next_number`, `padding`, `prefix`, `company_id`) VALUES
-(1, '2026-02-09 06:16:51.000000', 'admin@test.com', '2026-02-09 07:48:04.000000', 'admin@test.com', 'SALES_ORDER', 3, 5, 'SO-', 1),
+(1, '2026-02-09 06:16:51.000000', 'admin@test.com', '2026-02-13 02:01:42.000000', 'admin@test.com', 'SALES_ORDER', 10, 5, 'SO-', 1),
 (2, '2026-02-09 07:59:32.000000', 'admin@test.com', '2026-02-09 07:59:32.000000', 'admin@test.com', 'PURCHASE_ORDER', 2, 5, 'PO-', 1);
 
 -- --------------------------------------------------------
@@ -379,6 +379,19 @@ CREATE TABLE `fin_gl_account` (
   `company_id` bigint(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `fin_gl_account`
+--
+
+INSERT INTO `fin_gl_account` (`id`, `created_at`, `created_by`, `updated_at`, `updated_by`, `active`, `code`, `name`, `type`, `company_id`) VALUES
+(1, NULL, NULL, NULL, NULL, b'1', '1000', 'Cash', 'ASSET', 1),
+(2, NULL, NULL, NULL, NULL, b'1', '1100', 'Accounts Receivable', 'ASSET', 1),
+(3, NULL, NULL, NULL, NULL, b'1', '2000', 'Accounts Payable', 'LIABILITY', 1),
+(4, NULL, NULL, NULL, NULL, b'1', '2100', 'Tax Payable', 'LIABILITY', 1),
+(5, NULL, NULL, NULL, NULL, b'1', '1200', 'Tax Receivable', 'ASSET', 1),
+(6, NULL, NULL, NULL, NULL, b'1', '4000', 'Revenue', 'REVENUE', 1),
+(7, NULL, NULL, NULL, NULL, b'1', '5000', 'Expense', 'EXPENSE', 1);
+
 -- --------------------------------------------------------
 
 --
@@ -530,6 +543,44 @@ CREATE TABLE `fin_payment_allocation` (
   `invoice_id` bigint(20) NOT NULL,
   `payment_id` bigint(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `flyway_schema_history`
+--
+
+CREATE TABLE `flyway_schema_history` (
+  `installed_rank` int(11) NOT NULL,
+  `version` varchar(50) DEFAULT NULL,
+  `description` varchar(200) NOT NULL,
+  `type` varchar(20) NOT NULL,
+  `script` varchar(1000) NOT NULL,
+  `checksum` int(11) DEFAULT NULL,
+  `installed_by` varchar(100) NOT NULL,
+  `installed_on` timestamp NOT NULL DEFAULT current_timestamp(),
+  `execution_time` int(11) NOT NULL,
+  `success` tinyint(1) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `flyway_schema_history`
+--
+
+INSERT INTO `flyway_schema_history` (`installed_rank`, `version`, `description`, `type`, `script`, `checksum`, `installed_by`, `installed_on`, `execution_time`, `success`) VALUES
+(1, '1', '<< Flyway Baseline >>', 'BASELINE', '<< Flyway Baseline >>', NULL, 'root', '2026-02-13 02:45:17', 0, 1),
+(2, '2', 'mfg bom', 'SQL', 'V2__mfg_bom.sql', -600431703, 'root', '2026-02-13 02:45:17', 20, 1),
+(3, '3', 'mfg work order', 'SQL', 'V3__mfg_work_order.sql', 2019597206, 'root', '2026-02-13 02:45:18', 4, 1),
+(4, '4', 'mfg work order void', 'SQL', 'V4__mfg_work_order_void.sql', -2018066732, 'root', '2026-02-13 02:52:49', 39, 1),
+(5, '5', 'fin gl account and journal line fk', 'SQL', 'V5__fin_gl_account_and_journal_line_fk.sql', 723857497, 'root', '2026-02-13 02:57:01', 108, 1),
+(6, '5.1', 'fin gl account and journal line fk fix', 'SQL', 'V5.1__fin_gl_account_and_journal_line_fk_fix.sql', -1015733585, 'root', '2026-02-13 03:00:02', 75, 1),
+(7, '6', 'fin journal entry source link', 'SQL', 'V6__fin_journal_entry_source_link.sql', -1307179930, 'root', '2026-02-13 03:03:58', 29, 1),
+(8, '7', 'fin fiscal year and period', 'SQL', 'V7__fin_fiscal_year_and_period.sql', -73433045, 'root', '2026-02-13 03:03:58', 11, 1),
+(9, '8', 'fin bank statement', 'SQL', 'V8__fin_bank_statement.sql', -152660901, 'root', '2026-02-13 03:03:58', 6, 1),
+(10, '9', 'fin journal entry idempotency', 'SQL', 'V9__fin_journal_entry_idempotency.sql', 1788206169, 'root', '2026-02-13 03:03:58', 38, 1),
+(11, '10', 'fin invoice tax line', 'SQL', 'V10__fin_invoice_tax_line.sql', -3500630, 'root', '2026-02-13 03:03:58', 6, 1),
+(12, '11', 'trx order fulfillment tracking', 'SQL', 'V11__trx_order_fulfillment_tracking.sql', -1469659298, 'root', '2026-02-13 03:07:18', 43, 1),
+(13, '12', 'fin budget', 'SQL', 'V12__fin_budget.sql', 1439054809, 'root', '2026-02-13 03:07:19', 27, 0);
 
 -- --------------------------------------------------------
 
@@ -745,6 +796,33 @@ INSERT INTO `md_currency` (`id`, `created_at`, `created_by`, `updated_at`, `upda
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `md_material`
+--
+
+CREATE TABLE `md_material` (
+  `id` bigint(20) NOT NULL,
+  `created_at` datetime(6) DEFAULT NULL,
+  `created_by` varchar(255) DEFAULT NULL,
+  `updated_at` datetime(6) DEFAULT NULL,
+  `updated_by` varchar(255) DEFAULT NULL,
+  `active` bit(1) NOT NULL,
+  `code` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `company_id` bigint(20) NOT NULL,
+  `uom_id` bigint(20) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `md_material`
+--
+
+INSERT INTO `md_material` (`id`, `created_at`, `created_by`, `updated_at`, `updated_by`, `active`, `code`, `name`, `company_id`, `uom_id`) VALUES
+(1, '2026-02-13 02:15:37.000000', 'admin@test.com', '2026-02-13 02:15:37.000000', 'admin@test.com', b'1', '333', 'Bahan 1', 1, 1),
+(2, '2026-02-13 02:15:52.000000', 'admin@test.com', '2026-02-13 02:15:52.000000', 'admin@test.com', b'1', '77', 'Bahan 2', 1, 2);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `md_price_list`
 --
 
@@ -822,7 +900,9 @@ CREATE TABLE `md_product` (
 INSERT INTO `md_product` (`id`, `created_at`, `created_by`, `updated_at`, `updated_by`, `active`, `code`, `item_type`, `name`, `company_id`, `uom_id`) VALUES
 (1, '2026-02-09 06:14:59.000000', 'admin@test.com', '2026-02-09 06:14:59.000000', 'admin@test.com', b'1', 'ki-01', NULL, 'KIMONO', 1, 1),
 (2, '2026-02-09 06:15:16.000000', 'admin@test.com', '2026-02-09 06:15:16.000000', 'admin@test.com', b'1', '01', 'MARCHANDISES', 'Kain', 1, 1),
-(3, '2026-02-09 06:15:29.000000', 'admin@test.com', '2026-02-09 06:15:29.000000', 'admin@test.com', b'1', '22', 'MARCHANDISES', 'Benang', 1, 1);
+(3, '2026-02-09 06:15:29.000000', 'admin@test.com', '2026-02-09 06:15:29.000000', 'admin@test.com', b'1', '22', 'MARCHANDISES', 'Benang', 1, 1),
+(4, '2026-02-12 09:00:47.000000', 'admin@test.com', '2026-02-12 09:00:47.000000', 'admin@test.com', b'1', '55', 'MARCHANDISES', 'Bahan Kimono 1', 1, 3),
+(5, '2026-02-12 09:39:48.000000', 'admin@test.com', '2026-02-12 09:39:48.000000', 'admin@test.com', b'1', 'wh-018', 'MARCHANDISES', 'Meterial 6', 1, 1);
 
 -- --------------------------------------------------------
 
@@ -955,7 +1035,8 @@ CREATE TABLE `mfg_bom_line` (
   `updated_by` varchar(255) DEFAULT NULL,
   `qty` decimal(38,2) NOT NULL,
   `bom_id` bigint(20) NOT NULL,
-  `component_product_id` bigint(20) NOT NULL
+  `component_product_id` bigint(20) NOT NULL,
+  `component_material_id` bigint(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -1164,7 +1245,9 @@ CREATE TABLE `trx_sales_order` (
 --
 
 INSERT INTO `trx_sales_order` (`id`, `created_at`, `created_by`, `updated_at`, `updated_by`, `buyer_po`, `delivery_place`, `document_no`, `exchange_rate`, `foreign_amount`, `grand_total`, `in_charge`, `memo`, `order_date`, `order_type`, `payment_condition`, `status`, `total_net`, `total_tax`, `business_partner_id`, `company_id`, `currency_id`, `department_id`, `employee_id`, `forwarding_warehouse_id`, `org_id`, `price_list_version_id`) VALUES
-(2, '2026-02-09 07:48:04.000000', 'admin@test.com', '2026-02-09 07:48:04.000000', 'admin@test.com', NULL, NULL, 'SO-00002', NULL, NULL, 2000.00, NULL, 'test memo', '2026-02-09', 'DOMESTIC', NULL, 'DRAFTED', 2000.00, 0.00, 2, 1, NULL, NULL, NULL, NULL, 1, 1);
+(7, '2026-02-12 09:26:37.000000', 'admin@test.com', '2026-02-12 09:34:00.000000', 'admin@test.com', NULL, NULL, 'SO-00007', NULL, NULL, 3000.00, NULL, NULL, '2026-02-12', 'DOMESTIC', NULL, 'DRAFTED', 3000.00, 0.00, 2, 1, NULL, NULL, NULL, NULL, 1, 1),
+(8, '2026-02-12 09:40:54.000000', 'admin@test.com', '2026-02-12 09:40:54.000000', 'admin@test.com', NULL, NULL, 'SO-00008', NULL, NULL, 6000.00, NULL, NULL, '2026-02-12', 'DOMESTIC', NULL, 'DRAFTED', 6000.00, 0.00, 2, 1, NULL, NULL, NULL, NULL, 1, 1),
+(9, '2026-02-13 02:01:42.000000', 'admin@test.com', '2026-02-13 02:26:57.000000', 'admin@test.com', NULL, NULL, 'SO-00009', NULL, NULL, 3000.00, NULL, NULL, '2026-02-13', 'DOMESTIC', NULL, 'DRAFTED', 3000.00, 0.00, 2, 1, NULL, NULL, NULL, NULL, 1, 1);
 
 -- --------------------------------------------------------
 
@@ -1234,7 +1317,12 @@ CREATE TABLE `trx_sales_order_line` (
 --
 
 INSERT INTO `trx_sales_order_line` (`id`, `created_at`, `created_by`, `updated_at`, `updated_by`, `cm_cost`, `cmt_cost`, `color`, `cutting_no`, `delivery_date`, `description`, `destination`, `dp_price`, `fabric_eta`, `fabric_etd`, `factory`, `file_path`, `fob_price`, `ldp_price`, `line_net`, `national_size`, `price`, `qty`, `remark`, `ship_mode`, `shipped_qty`, `size`, `style`, `supply_amount`, `unit`, `vat_amount`, `product_id`, `sales_order_id`, `uom_id`) VALUES
-(3, '2026-02-09 07:48:04.000000', 'admin@test.com', '2026-02-09 07:48:04.000000', 'admin@test.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2000.00, NULL, 1000.00, 2.00, NULL, NULL, 0.00, NULL, 'Style A', NULL, NULL, NULL, 1, 2, 1);
+(10, '2026-02-12 09:26:37.000000', 'admin@test.com', '2026-02-12 09:26:37.000000', 'admin@test.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2000.00, NULL, 1000.00, 2.00, NULL, NULL, 0.00, 'XS', 'Style A', NULL, NULL, NULL, 1, 7, 1),
+(11, '2026-02-12 09:34:00.000000', 'admin@test.com', '2026-02-12 09:34:00.000000', 'admin@test.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1000.00, NULL, 1000.00, 1.00, NULL, NULL, 0.00, 'XL', 'Style A', NULL, NULL, NULL, 1, 7, 1),
+(12, '2026-02-12 09:40:54.000000', 'admin@test.com', '2026-02-12 09:40:54.000000', 'admin@test.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2000.00, NULL, 1000.00, 2.00, NULL, NULL, 0.00, 'XL', 'Style A', NULL, NULL, NULL, 1, 8, 1),
+(13, '2026-02-12 09:40:54.000000', 'admin@test.com', '2026-02-12 09:40:54.000000', 'admin@test.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 4000.00, NULL, 1000.00, 4.00, NULL, NULL, 0.00, 'XS', 'Style A', NULL, NULL, NULL, 1, 8, 1),
+(14, '2026-02-13 02:01:42.000000', 'admin@test.com', '2026-02-13 02:01:42.000000', 'admin@test.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2000.00, NULL, 1000.00, 2.00, NULL, NULL, 0.00, 'XL', 'Style A', NULL, NULL, NULL, 1, 9, 1),
+(15, '2026-02-13 02:26:57.000000', 'admin@test.com', '2026-02-13 02:26:57.000000', 'admin@test.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1000.00, NULL, 1000.00, 1.00, NULL, NULL, 0.00, 'XX', 'Style A', NULL, NULL, NULL, 1, 9, 1);
 
 -- --------------------------------------------------------
 
@@ -1252,6 +1340,14 @@ CREATE TABLE `trx_sales_order_line_bom` (
   `source_bom_version` int(11) DEFAULT NULL,
   `sales_order_line_id` bigint(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `trx_sales_order_line_bom`
+--
+
+INSERT INTO `trx_sales_order_line_bom` (`id`, `created_at`, `created_by`, `updated_at`, `updated_by`, `source_bom_id`, `source_bom_version`, `sales_order_line_id`) VALUES
+(14, '2026-02-13 03:12:16.000000', 'admin@test.com', '2026-02-13 03:12:16.000000', 'admin@test.com', NULL, NULL, 14),
+(15, '2026-02-13 03:12:16.000000', 'admin@test.com', '2026-02-13 03:12:16.000000', 'admin@test.com', NULL, NULL, 15);
 
 -- --------------------------------------------------------
 
@@ -1277,9 +1373,20 @@ CREATE TABLE `trx_sales_order_line_bom_line` (
   `unit_price_domestic` decimal(38,2) DEFAULT NULL,
   `unit_price_foreign` decimal(38,2) DEFAULT NULL,
   `yy` decimal(38,2) DEFAULT NULL,
-  `component_product_id` bigint(20) NOT NULL,
-  `sales_order_line_bom_id` bigint(20) NOT NULL
+  `component_product_id` bigint(20) DEFAULT NULL,
+  `sales_order_line_bom_id` bigint(20) NOT NULL,
+  `component_material_id` bigint(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `trx_sales_order_line_bom_line`
+--
+
+INSERT INTO `trx_sales_order_line_bom_line` (`id`, `created_at`, `created_by`, `updated_at`, `updated_by`, `amount_domestic`, `amount_foreign`, `bom_code`, `color_description2`, `currency_id`, `description1`, `exchange_rate`, `qty`, `unit`, `unit_price_domestic`, `unit_price_foreign`, `yy`, `component_product_id`, `sales_order_line_bom_id`, `component_material_id`) VALUES
+(5, '2026-02-13 03:13:07.000000', 'admin@test.com', '2026-02-13 03:13:07.000000', 'admin@test.com', 16000.00, 1.00, NULL, 'RED', NULL, NULL, 16000.00, 1.00, NULL, 16000.00, 1.00, 1.00, NULL, 14, 1),
+(6, '2026-02-13 03:13:07.000000', 'admin@test.com', '2026-02-13 03:13:07.000000', 'admin@test.com', 64000.00, 4.00, NULL, 'RED', NULL, NULL, 16000.00, 1.00, NULL, 32000.00, 2.00, 2.00, NULL, 14, 2),
+(7, '2026-02-13 03:13:07.000000', 'admin@test.com', '2026-02-13 03:13:07.000000', 'admin@test.com', 16000.00, 1.00, NULL, 'RED', NULL, NULL, 16000.00, 1.00, NULL, 16000.00, 1.00, 1.00, NULL, 15, 1),
+(8, '2026-02-13 03:13:07.000000', 'admin@test.com', '2026-02-13 03:13:07.000000', 'admin@test.com', 64000.00, 4.00, NULL, 'RED', NULL, NULL, 16000.00, 1.00, NULL, 32000.00, 2.00, 2.00, NULL, 15, 2);
 
 -- --------------------------------------------------------
 
@@ -1507,17 +1614,18 @@ ALTER TABLE `fin_invoice_tax_line`
 ALTER TABLE `fin_journal_entry`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `UKrawxmf2od0uepfttqpsabxmj7` (`document_no`),
+  ADD UNIQUE KEY `uk_fin_je_company_source` (`company_id`,`source_document_type`,`source_document_no`),
   ADD KEY `FK9mlpmff4tnar5ja994usrxcng` (`accounting_period_id`),
-  ADD KEY `FKbd7k5id9jrt5hgo5s6bexjd5a` (`company_id`),
-  ADD KEY `FKi8ywrtvy0cf0atcy1vsqapk12` (`org_id`);
+  ADD KEY `FKi8ywrtvy0cf0atcy1vsqapk12` (`org_id`),
+  ADD KEY `idx_fin_je_source` (`company_id`,`source_document_type`,`source_document_no`);
 
 --
 -- Indexes for table `fin_journal_line`
 --
 ALTER TABLE `fin_journal_line`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `FKdify2dgd8t4nlytexsrx4chk2` (`gl_account_id`),
-  ADD KEY `FKrr0nrf4727l066ros5l715eua` (`journal_entry_id`);
+  ADD KEY `FKrr0nrf4727l066ros5l715eua` (`journal_entry_id`),
+  ADD KEY `idx_fin_journal_line_gl_account` (`gl_account_id`);
 
 --
 -- Indexes for table `fin_payment`
@@ -1538,6 +1646,13 @@ ALTER TABLE `fin_payment_allocation`
   ADD PRIMARY KEY (`id`),
   ADD KEY `FKccbb8g9648ebswe7qhlujxgn0` (`invoice_id`),
   ADD KEY `FKcv9805dglo8ilylkixh3vvsep` (`payment_id`);
+
+--
+-- Indexes for table `flyway_schema_history`
+--
+ALTER TABLE `flyway_schema_history`
+  ADD PRIMARY KEY (`installed_rank`),
+  ADD KEY `flyway_schema_history_s_idx` (`success`);
 
 --
 -- Indexes for table `inv_inventory_adjustment`
@@ -1625,6 +1740,14 @@ ALTER TABLE `md_currency`
   ADD KEY `FKfi2l06m912a2bx4t7etgox8go` (`company_id`);
 
 --
+-- Indexes for table `md_material`
+--
+ALTER TABLE `md_material`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `FKb1pwxlfm66o8mrdvejegql00b` (`company_id`),
+  ADD KEY `FKmdyt23dxli65xkrybk5bpy1ju` (`uom_id`);
+
+--
 -- Indexes for table `md_price_list`
 --
 ALTER TABLE `md_price_list`
@@ -1692,7 +1815,8 @@ ALTER TABLE `mfg_bom`
 ALTER TABLE `mfg_bom_line`
   ADD PRIMARY KEY (`id`),
   ADD KEY `FKbgtwxbwur6flk0p7fjit3tf8q` (`bom_id`),
-  ADD KEY `FKjake8723tsq8g3gwch48jwfj5` (`component_product_id`);
+  ADD KEY `FKjake8723tsq8g3gwch48jwfj5` (`component_product_id`),
+  ADD KEY `FKcg3dbgxghxluc06u1nguop7kx` (`component_material_id`);
 
 --
 -- Indexes for table `mfg_work_order`
@@ -1802,7 +1926,8 @@ ALTER TABLE `trx_sales_order_line_bom`
 ALTER TABLE `trx_sales_order_line_bom_line`
   ADD PRIMARY KEY (`id`),
   ADD KEY `FK95nfq5ddy427nuwk1sk9742k6` (`component_product_id`),
-  ADD KEY `FK1pt7myrmp5jx5x1rp44a181c9` (`sales_order_line_bom_id`);
+  ADD KEY `FK1pt7myrmp5jx5x1rp44a181c9` (`sales_order_line_bom_id`),
+  ADD KEY `idx_trx_sol_bomline_component_material` (`component_material_id`);
 
 --
 -- Indexes for table `trx_sales_order_line_lookup`
@@ -1916,7 +2041,7 @@ ALTER TABLE `fin_fiscal_year`
 -- AUTO_INCREMENT for table `fin_gl_account`
 --
 ALTER TABLE `fin_gl_account`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `fin_invoice`
@@ -2021,6 +2146,12 @@ ALTER TABLE `md_currency`
   MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT for table `md_material`
+--
+ALTER TABLE `md_material`
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `md_price_list`
 --
 ALTER TABLE `md_price_list`
@@ -2036,7 +2167,7 @@ ALTER TABLE `md_price_list_version`
 -- AUTO_INCREMENT for table `md_product`
 --
 ALTER TABLE `md_product`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `md_product_price`
@@ -2120,7 +2251,7 @@ ALTER TABLE `trx_purchase_order_line`
 -- AUTO_INCREMENT for table `trx_sales_order`
 --
 ALTER TABLE `trx_sales_order`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `trx_sales_order_delivery_schedule`
@@ -2132,19 +2263,19 @@ ALTER TABLE `trx_sales_order_delivery_schedule`
 -- AUTO_INCREMENT for table `trx_sales_order_line`
 --
 ALTER TABLE `trx_sales_order_line`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `trx_sales_order_line_bom`
 --
 ALTER TABLE `trx_sales_order_line_bom`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `trx_sales_order_line_bom_line`
 --
 ALTER TABLE `trx_sales_order_line_bom_line`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `trx_sales_order_line_lookup`
@@ -2288,7 +2419,8 @@ ALTER TABLE `fin_journal_entry`
 --
 ALTER TABLE `fin_journal_line`
   ADD CONSTRAINT `FKdify2dgd8t4nlytexsrx4chk2` FOREIGN KEY (`gl_account_id`) REFERENCES `fin_gl_account` (`id`),
-  ADD CONSTRAINT `FKrr0nrf4727l066ros5l715eua` FOREIGN KEY (`journal_entry_id`) REFERENCES `fin_journal_entry` (`id`);
+  ADD CONSTRAINT `FKrr0nrf4727l066ros5l715eua` FOREIGN KEY (`journal_entry_id`) REFERENCES `fin_journal_entry` (`id`),
+  ADD CONSTRAINT `fk_fin_journal_line_gl_account` FOREIGN KEY (`gl_account_id`) REFERENCES `fin_gl_account` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `fin_payment`
@@ -2381,6 +2513,13 @@ ALTER TABLE `md_currency`
   ADD CONSTRAINT `FKfi2l06m912a2bx4t7etgox8go` FOREIGN KEY (`company_id`) REFERENCES `core_company` (`id`);
 
 --
+-- Constraints for table `md_material`
+--
+ALTER TABLE `md_material`
+  ADD CONSTRAINT `FKb1pwxlfm66o8mrdvejegql00b` FOREIGN KEY (`company_id`) REFERENCES `core_company` (`id`),
+  ADD CONSTRAINT `FKmdyt23dxli65xkrybk5bpy1ju` FOREIGN KEY (`uom_id`) REFERENCES `md_uom` (`id`);
+
+--
 -- Constraints for table `md_price_list`
 --
 ALTER TABLE `md_price_list`
@@ -2439,6 +2578,7 @@ ALTER TABLE `mfg_bom`
 --
 ALTER TABLE `mfg_bom_line`
   ADD CONSTRAINT `FKbgtwxbwur6flk0p7fjit3tf8q` FOREIGN KEY (`bom_id`) REFERENCES `mfg_bom` (`id`),
+  ADD CONSTRAINT `FKcg3dbgxghxluc06u1nguop7kx` FOREIGN KEY (`component_material_id`) REFERENCES `md_material` (`id`),
   ADD CONSTRAINT `FKjake8723tsq8g3gwch48jwfj5` FOREIGN KEY (`component_product_id`) REFERENCES `md_product` (`id`);
 
 --
@@ -2534,6 +2674,7 @@ ALTER TABLE `trx_sales_order_line_bom`
 --
 ALTER TABLE `trx_sales_order_line_bom_line`
   ADD CONSTRAINT `FK1pt7myrmp5jx5x1rp44a181c9` FOREIGN KEY (`sales_order_line_bom_id`) REFERENCES `trx_sales_order_line_bom` (`id`),
+  ADD CONSTRAINT `FK4cmo4geeo9fjqo5gwj2cowlkk` FOREIGN KEY (`component_material_id`) REFERENCES `md_material` (`id`),
   ADD CONSTRAINT `FK95nfq5ddy427nuwk1sk9742k6` FOREIGN KEY (`component_product_id`) REFERENCES `md_product` (`id`);
 
 --

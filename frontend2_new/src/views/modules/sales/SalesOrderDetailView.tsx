@@ -247,7 +247,7 @@ export default function SalesOrderDetailView() {
       message.error('Only allowed while Sales Order is DRAFTED')
       return
     }
-    if (!bomAllProducts.length || !bomCurrencies.length) {
+    if (!bomAllProducts.length || !bomAllMaterials.length || !bomCurrencies.length) {
       await loadBomEditorLookups(companyId)
     }
 
@@ -402,6 +402,14 @@ export default function SalesOrderDetailView() {
     void loadDocuments(companyId, soId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, id])
+
+  useEffect(() => {
+    // Reset BOM lookups when company changes
+    setBomAllProducts([])
+    setBomAllMaterials([])
+    setBomCurrencies([])
+    setBomProductId(null)
+  }, [companyId])
 
   useEffect(() => {
     const lines = ((so as any)?.lines || []) as any[]
